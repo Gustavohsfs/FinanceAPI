@@ -30,17 +30,23 @@ function Invoke-Gcloud {
     [switch] $Capture
   )
 
+  $previousErrorActionPreference = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
   if ($Capture) {
     $output = & $script:gcloudCommand @Arguments 2>&1
-    if ($LASTEXITCODE -ne 0) {
-      throw "gcloud failed with exit code $LASTEXITCODE."
+    $exitCode = $LASTEXITCODE
+    $ErrorActionPreference = $previousErrorActionPreference
+    if ($exitCode -ne 0) {
+      throw "gcloud failed with exit code $exitCode."
     }
     return (@($output) -join "`n").Trim()
   }
 
   & $script:gcloudCommand @Arguments
-  if ($LASTEXITCODE -ne 0) {
-    throw "gcloud failed with exit code $LASTEXITCODE."
+  $exitCode = $LASTEXITCODE
+  $ErrorActionPreference = $previousErrorActionPreference
+  if ($exitCode -ne 0) {
+    throw "gcloud failed with exit code $exitCode."
   }
 }
 
@@ -106,8 +112,12 @@ function Assert-RequiredEnvironment {
 function Test-GcloudResource {
   param([Parameter(Mandatory = $true)][string[]] $Arguments)
 
-  & $script:gcloudCommand @Arguments *> $null
-  return $LASTEXITCODE -eq 0
+  $previousErrorActionPreference = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
+  & $script:gcloudCommand @Arguments 1>$null 2>$null
+  $exitCode = $LASTEXITCODE
+  $ErrorActionPreference = $previousErrorActionPreference
+  return $exitCode -eq 0
 }
 
 function Add-SecretVersionFromMemory {
@@ -149,9 +159,13 @@ function Get-CurrentSecretVersion {
     [Parameter(Mandatory = $true)][string] $ExpectedValue
   )
 
+  $previousErrorActionPreference = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
   $existingValue = & $script:gcloudCommand secrets versions access latest `
     "--secret=$SecretName" "--project=$ProjectId" 2>$null
-  if ($LASTEXITCODE -ne 0) {
+  $exitCode = $LASTEXITCODE
+  $ErrorActionPreference = $previousErrorActionPreference
+  if ($exitCode -ne 0) {
     return $null
   }
   $joinedValue = @($existingValue) -join "`n"
