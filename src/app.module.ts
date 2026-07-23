@@ -1,7 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_FILTER, APP_GUARD, APP_PIPE } from '@nestjs/core';
+import { JwtModule } from '@nestjs/jwt';
 import { LoggerModule } from 'nestjs-pino';
+import { ZodValidationPipe } from 'nestjs-zod';
 
+import { DomainExceptionFilter } from './common/filters/domain-exception.filter.js';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard.js';
 import { configuration } from './config/configuration.js';
 import { validateEnvironment } from './config/env.schema.js';
 import { HealthModule } from './modules/health/health.module.js';
@@ -14,6 +19,7 @@ import { HealthModule } from './modules/health/health.module.js';
       load: [configuration],
       validate: validateEnvironment,
     }),
+    JwtModule.register({ global: true }),
     LoggerModule.forRoot({
       pinoHttp: {
         genReqId: (request) => request.headers['x-request-id']?.toString() ?? crypto.randomUUID(),
@@ -30,6 +36,11 @@ import { HealthModule } from './modules/health/health.module.js';
       },
     }),
     HealthModule,
+  ],
+  providers: [
+    { provide: APP_FILTER, useClass: DomainExceptionFilter },
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_PIPE, useClass: ZodValidationPipe },
   ],
 })
 export class AppModule {}
