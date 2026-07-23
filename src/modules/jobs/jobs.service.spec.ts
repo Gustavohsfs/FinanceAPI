@@ -19,4 +19,64 @@ describe('JobsService locking', () => {
 
     expect(materializeNext45Days).not.toHaveBeenCalled();
   });
+
+  it('runs daily maintenance and Sunday cleanup in order', async () => {
+    const calls: string[] = [];
+    const jobs = {
+      withLock: vi.fn(async (_name: string, work: () => Promise<void>) => {
+        await work();
+        return true;
+      }),
+      recalculateCreditSettlements: vi.fn(async () => {
+        calls.push('recalculate');
+      }),
+      evaluateOverBudgetCount: vi.fn(async () => {
+        calls.push('evaluate');
+        return 0;
+      }),
+      cleanupExpired: vi.fn(async () => {
+        calls.push('cleanup');
+      }),
+    } as unknown as JobsRepository;
+    const recurrences = {
+      materializeNext45Days: vi.fn(async () => {
+        calls.push('materialize');
+      }),
+    } as unknown as RecurrencesRepository;
+    const service = new JobsService(jobs, recurrences);
+
+    await service.runDailyMaintenance(new Date('2026-07-26T12:00:00.000Z'));
+
+    expect(calls).toEqual(['materialize', 'recalculate', 'evaluate', 'cleanup']);
+  });
+
+  it('does not clean up outside Sunday in Sao Paulo', async () => {
+    const calls: string[] = [];
+    const jobs = {
+      withLock: vi.fn(async (_name: string, work: () => Promise<void>) => {
+        await work();
+        return true;
+      }),
+      recalculateCreditSettlements: vi.fn(async () => {
+        calls.push('recalculate');
+      }),
+      evaluateOverBudgetCount: vi.fn(async () => {
+        calls.push('evaluate');
+        return 0;
+      }),
+      cleanupExpired: vi.fn(async () => {
+        calls.push('cleanup');
+      }),
+    } as unknown as JobsRepository;
+    const recurrences = {
+      materializeNext45Days: vi.fn(async () => {
+        calls.push('materialize');
+      }),
+    } as unknown as RecurrencesRepository;
+    const service = new JobsService(jobs, recurrences);
+
+    await service.runDailyMaintenance(new Date('2026-07-27T12:00:00.000Z'));
+
+    expect(calls).toEqual(['materialize', 'recalculate', 'evaluate']);
+  });
 });

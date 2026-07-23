@@ -7,5 +7,6 @@ import { JobsService } from './jobs.service.js';
 @Module({
   imports: [RecurrencesModule],
   providers: [JobsRepository, JobsService],
+  exports: [JobsService],
 })
 export class JobsModule {}
