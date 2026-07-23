@@ -9,27 +9,30 @@ describe('runMaintenance', () => {
   it('runs maintenance and closes the Nest context', async () => {
     const runDailyMaintenance = vi.fn().mockResolvedValue(undefined);
     const logger = {};
+    const useLogger = vi.fn();
+    const close = vi.fn().mockResolvedValue(undefined);
     const app = {
       get: vi.fn((token: unknown) => {
         if (token === Logger) return logger;
         if (token === JobsService) return { runDailyMaintenance };
         throw new Error('Unexpected token');
       }),
-      useLogger: vi.fn(),
-      close: vi.fn().mockResolvedValue(undefined),
+      useLogger,
+      close,
     } as unknown as INestApplicationContext;
     const createApplication = vi.fn().mockResolvedValue(app);
 
     await runMaintenance(createApplication);
 
     expect(createApplication).toHaveBeenCalledOnce();
-    expect(app.useLogger).toHaveBeenCalledWith(logger);
+    expect(useLogger).toHaveBeenCalledWith(logger);
     expect(runDailyMaintenance).toHaveBeenCalledOnce();
-    expect(app.close).toHaveBeenCalledOnce();
+    expect(close).toHaveBeenCalledOnce();
   });
 
   it('closes the Nest context when maintenance fails', async () => {
     const failure = new Error('maintenance failed');
+    const close = vi.fn().mockResolvedValue(undefined);
     const app = {
       get: vi.fn((token: unknown) => {
         if (token === Logger) return {};
@@ -39,10 +42,10 @@ describe('runMaintenance', () => {
         throw new Error('Unexpected token');
       }),
       useLogger: vi.fn(),
-      close: vi.fn().mockResolvedValue(undefined),
+      close,
     } as unknown as INestApplicationContext;
 
-    await expect(runMaintenance(async () => app)).rejects.toBe(failure);
-    expect(app.close).toHaveBeenCalledOnce();
+    await expect(runMaintenance(vi.fn().mockResolvedValue(app))).rejects.toBe(failure);
+    expect(close).toHaveBeenCalledOnce();
   });
 });

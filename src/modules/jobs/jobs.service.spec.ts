@@ -27,20 +27,23 @@ describe('JobsService locking', () => {
         await work();
         return true;
       }),
-      recalculateCreditSettlements: vi.fn(async () => {
+      recalculateCreditSettlements: vi.fn(() => {
         calls.push('recalculate');
+        return Promise.resolve();
       }),
-      evaluateOverBudgetCount: vi.fn(async () => {
+      evaluateOverBudgetCount: vi.fn(() => {
         calls.push('evaluate');
-        return 0;
+        return Promise.resolve(0);
       }),
-      cleanupExpired: vi.fn(async () => {
+      cleanupExpired: vi.fn(() => {
         calls.push('cleanup');
+        return Promise.resolve();
       }),
     } as unknown as JobsRepository;
     const recurrences = {
-      materializeNext45Days: vi.fn(async () => {
+      materializeNext45Days: vi.fn(() => {
         calls.push('materialize');
+        return Promise.resolve();
       }),
     } as unknown as RecurrencesRepository;
     const service = new JobsService(jobs, recurrences);
@@ -57,20 +60,23 @@ describe('JobsService locking', () => {
         await work();
         return true;
       }),
-      recalculateCreditSettlements: vi.fn(async () => {
+      recalculateCreditSettlements: vi.fn(() => {
         calls.push('recalculate');
+        return Promise.resolve();
       }),
-      evaluateOverBudgetCount: vi.fn(async () => {
+      evaluateOverBudgetCount: vi.fn(() => {
         calls.push('evaluate');
-        return 0;
+        return Promise.resolve(0);
       }),
-      cleanupExpired: vi.fn(async () => {
+      cleanupExpired: vi.fn(() => {
         calls.push('cleanup');
+        return Promise.resolve();
       }),
     } as unknown as JobsRepository;
     const recurrences = {
-      materializeNext45Days: vi.fn(async () => {
+      materializeNext45Days: vi.fn(() => {
         calls.push('materialize');
+        return Promise.resolve();
       }),
     } as unknown as RecurrencesRepository;
     const service = new JobsService(jobs, recurrences);
