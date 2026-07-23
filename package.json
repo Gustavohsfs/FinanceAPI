@@ -39,7 +39,7 @@
     "prisma:seed": "prisma db seed",
     "openapi:generate": "tsx scripts/generate-openapi.ts",
     "smoke": "tsx scripts/smoke-api.ts",
-    "verify": "corepack pnpm prisma:validate && corepack pnpm lint && corepack pnpm typecheck && corepack pnpm test && corepack pnpm test:e2e && corepack pnpm build && corepack pnpm build:check && corepack pnpm openapi:generate && corepack pnpm format:check"
+    "verify": "corepack pnpm prisma:validate && corepack pnpm prisma:generate && corepack pnpm lint && corepack pnpm typecheck && corepack pnpm test && corepack pnpm test:e2e && corepack pnpm build && corepack pnpm build:check && corepack pnpm openapi:generate && corepack pnpm format:check"
   },
   "dependencies": {
     "@fastify/cors": "11.3.0",
