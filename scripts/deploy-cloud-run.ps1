@@ -355,8 +355,17 @@ Invoke-Gcloud -Arguments @(
   '.'
 )
 
-$plainEnvironment =
-  "^|^NODE_ENV=production|CORS_ORIGINS=$($environment['CORS_ORIGINS'])"
+$plainEnvironmentFile = [System.IO.Path]::GetTempFileName()
+$escapedCorsOrigins = $environment['CORS_ORIGINS'].Replace("'", "''")
+$plainEnvironmentContents = @"
+NODE_ENV: 'production'
+CORS_ORIGINS: '$escapedCorsOrigins'
+"@
+[System.IO.File]::WriteAllText(
+  $plainEnvironmentFile,
+  $plainEnvironmentContents,
+  [System.Text.UTF8Encoding]::new($false)
+)
 $secretArguments = @(
   "DATABASE_URL=$($secretDefinitions['DATABASE_URL']):$($secretVersions['DATABASE_URL'])",
   "DIRECT_URL=$($secretDefinitions['DIRECT_URL']):$($secretVersions['DIRECT_URL'])",
@@ -364,48 +373,52 @@ $secretArguments = @(
   "REFRESH_TOKEN_PEPPER=$($secretDefinitions['REFRESH_TOKEN_PEPPER']):$($secretVersions['REFRESH_TOKEN_PEPPER'])"
 ) -join ','
 
-Invoke-Gcloud -Arguments @(
-  'run', 'deploy', $serviceName,
-  "--image=$image",
-  "--region=$Region",
-  '--platform=managed',
-  '--cpu=1',
-  '--memory=512Mi',
-  '--min=0',
-  '--max=3',
-  '--concurrency=10',
-  '--timeout=60',
-  '--cpu-throttling',
-  '--no-cpu-boost',
-  '--allow-unauthenticated',
-  '--ingress=all',
-  "--service-account=$runtimeServiceAccount",
-  "--set-env-vars=$plainEnvironment",
-  "--set-secrets=$secretArguments",
-  '--startup-probe=httpGet.path=/health/ready,initialDelaySeconds=0,timeoutSeconds=5,periodSeconds=5,failureThreshold=12',
-  '--liveness-probe=httpGet.path=/health/live,initialDelaySeconds=0,timeoutSeconds=2,periodSeconds=30,failureThreshold=3',
-  "--project=$ProjectId",
-  '--quiet'
-)
+try {
+  Invoke-Gcloud -Arguments @(
+    'run', 'deploy', $serviceName,
+    "--image=$image",
+    "--region=$Region",
+    '--platform=managed',
+    '--cpu=1',
+    '--memory=512Mi',
+    '--min=0',
+    '--max=3',
+    '--concurrency=10',
+    '--timeout=60',
+    '--cpu-throttling',
+    '--no-cpu-boost',
+    '--allow-unauthenticated',
+    '--ingress=all',
+    "--service-account=$runtimeServiceAccount",
+    "--env-vars-file=$plainEnvironmentFile",
+    "--set-secrets=$secretArguments",
+    '--startup-probe=httpGet.path=/health/ready,initialDelaySeconds=0,timeoutSeconds=5,periodSeconds=5,failureThreshold=12',
+    '--liveness-probe=httpGet.path=/health/live,initialDelaySeconds=0,timeoutSeconds=2,periodSeconds=30,failureThreshold=3',
+    "--project=$ProjectId",
+    '--quiet'
+  )
 
-Invoke-Gcloud -Arguments @(
-  'run', 'jobs', 'deploy', $jobName,
-  "--image=$image",
-  "--region=$Region",
-  '--cpu=1',
-  '--memory=512Mi',
-  '--tasks=1',
-  '--parallelism=1',
-  '--max-retries=1',
-  '--task-timeout=10m',
-  "--service-account=$runtimeServiceAccount",
-  "--set-env-vars=$plainEnvironment",
-  "--set-secrets=$secretArguments",
-  '--command=node',
-  '--args=dist/maintenance.js',
-  "--project=$ProjectId",
-  '--quiet'
-)
+  Invoke-Gcloud -Arguments @(
+    'run', 'jobs', 'deploy', $jobName,
+    "--image=$image",
+    "--region=$Region",
+    '--cpu=1',
+    '--memory=512Mi',
+    '--tasks=1',
+    '--parallelism=1',
+    '--max-retries=1',
+    '--task-timeout=10m',
+    "--service-account=$runtimeServiceAccount",
+    "--env-vars-file=$plainEnvironmentFile",
+    "--set-secrets=$secretArguments",
+    '--command=node',
+    '--args=dist/maintenance.js',
+    "--project=$ProjectId",
+    '--quiet'
+  )
+} finally {
+  [System.IO.File]::Delete($plainEnvironmentFile)
+}
 
 Invoke-Gcloud -Arguments @(
   'run', 'jobs', 'add-iam-policy-binding', $jobName,
