@@ -9,6 +9,7 @@ const swaggerConfig = new DocumentBuilder()
   .setTitle('Fluxo API')
   .setDescription('API financeira autoritativa para os clientes Fluxo.')
   .setVersion('1.0.0')
+  .setOpenAPIVersion('3.1.0')
   .addBearerAuth()
   .build();
 

@@ -11,7 +11,7 @@ export const createTransactionSchema = z
   .object({
     type: transactionTypeSchema,
     amountCents: z.number().int().positive(),
-    description: z.string().trim().min(1).max(120),
+    description: z.string().trim().max(120).default(''),
     occurredAt: isoDateTimeSchema,
     settledAt: isoDateTimeSchema.nullable().optional(),
     categoryId: z.uuid().optional(),

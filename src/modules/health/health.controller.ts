@@ -1,12 +1,12 @@
 import { Controller, Get } from '@nestjs/common';
 
-import { PrismaService } from '../../database/prisma.service.js';
 import { Public } from '../../common/decorators/public.decorator.js';
+import { HealthRepository } from './health.repository.js';
 
 @Controller('health')
 @Public()
 export class HealthController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly repository: HealthRepository) {}
 
   @Get('live')
   live(): { status: 'ok' } {
@@ -15,6 +15,6 @@ export class HealthController {
 
   @Get('ready')
   async ready(): Promise<{ status: 'ok' | 'error' }> {
-    return { status: (await this.prisma.isReady()) ? 'ok' : 'error' };
+    return { status: (await this.repository.isReady()) ? 'ok' : 'error' };
   }
 }

@@ -40,7 +40,9 @@ pnpm typecheck
 pnpm test
 pnpm test:e2e
 pnpm build
+pnpm build:check
 pnpm openapi:generate
+pnpm prisma:validate
 pnpm verify
 ```
 
@@ -51,6 +53,13 @@ pnpm prisma:deploy
 ```
 
 O processo da aplicação nunca executa migration automaticamente.
+
+Com a API iniciada, o smoke end-to-end valida health, Swagger,
+autenticação, catálogos, idempotência, isolamento entre usuários e insights:
+
+```bash
+pnpm smoke
+```
 
 ## Contrato
 

@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
-import { DEFAULT_CATEGORIES } from '../../../prisma/seed/data/default-categories.js';
+import { DEFAULT_CATEGORIES } from '../categories/default-categories.js';
 import type { UserResponse } from './auth.schemas.js';
 
 export interface UserWithPassword extends UserResponse {

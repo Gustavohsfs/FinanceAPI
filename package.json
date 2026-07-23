@@ -19,6 +19,7 @@
   },
   "scripts": {
     "build": "nest build",
+    "build:check": "node --check dist/main.js",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main.js",
@@ -31,15 +32,19 @@
     "test:e2e": "vitest run --config vitest.e2e.config.ts",
     "test:coverage": "vitest run --coverage",
     "prisma:generate": "prisma generate",
+    "prisma:validate": "prisma validate",
+    "prisma:drift": "prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema.prisma --exit-code",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "prisma db seed",
     "openapi:generate": "tsx scripts/generate-openapi.ts",
-    "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm test:e2e && pnpm build && pnpm openapi:generate && pnpm format:check"
+    "smoke": "tsx scripts/smoke-api.ts",
+    "verify": "corepack pnpm prisma:validate && corepack pnpm lint && corepack pnpm typecheck && corepack pnpm test && corepack pnpm test:e2e && corepack pnpm build && corepack pnpm build:check && corepack pnpm openapi:generate && corepack pnpm format:check"
   },
   "dependencies": {
     "@fastify/cors": "11.3.0",
     "@fastify/helmet": "13.1.0",
+    "@fastify/static": "9.3.0",
     "@nestjs/common": "11.1.28",
     "@nestjs/config": "4.0.4",
     "@nestjs/core": "11.1.28",
