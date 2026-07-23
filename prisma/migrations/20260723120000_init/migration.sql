@@ -318,8 +318,8 @@ ALTER TABLE "categories"
   CHECK ("color" ~ '^#[0-9A-Fa-f]{6}$');
 
 ALTER TABLE "transactions"
-  ADD CONSTRAINT "transactions_amount_positive"
-  CHECK ("amount_cents" > 0),
+  ADD CONSTRAINT "transactions_amount_nonnegative"
+  CHECK ("amount_cents" >= 0),
   ADD CONSTRAINT "transactions_installments_valid"
   CHECK (
     (

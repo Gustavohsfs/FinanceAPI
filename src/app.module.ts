@@ -15,6 +15,7 @@ import { AuthModule } from './modules/auth/index.js';
 import { AccountsModule } from './modules/accounts/accounts.module.js';
 import { CategoriesModule } from './modules/categories/categories.module.js';
 import { CreditCardsModule } from './modules/credit-cards/credit-cards.module.js';
+import { TransactionsModule } from './modules/transactions/transactions.module.js';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { CreditCardsModule } from './modules/credit-cards/credit-cards.module.js
     AccountsModule,
     CreditCardsModule,
     CategoriesModule,
+    TransactionsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: DomainExceptionFilter },
