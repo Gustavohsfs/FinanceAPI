@@ -4,6 +4,7 @@ import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ZodSerializerInterceptor, ZodValidationPipe } from 'nestjs-zod';
 
 import { DomainExceptionFilter } from './common/filters/domain-exception.filter.js';
@@ -17,6 +18,9 @@ import { CategoriesModule } from './modules/categories/categories.module.js';
 import { CreditCardsModule } from './modules/credit-cards/credit-cards.module.js';
 import { TransactionsModule } from './modules/transactions/transactions.module.js';
 import { InsightsModule } from './modules/insights/insights.module.js';
+import { GoalsModule } from './modules/goals/goals.module.js';
+import { JobsModule } from './modules/jobs/jobs.module.js';
+import { RecurrencesModule } from './modules/recurrences/recurrences.module.js';
 
 @Module({
   imports: [
@@ -28,6 +32,7 @@ import { InsightsModule } from './modules/insights/insights.module.js';
     }),
     JwtModule.register({ global: true }),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
+    ScheduleModule.forRoot(),
     LoggerModule.forRoot({
       pinoHttp: {
         genReqId: (request) => request.headers['x-request-id']?.toString() ?? crypto.randomUUID(),
@@ -50,6 +55,9 @@ import { InsightsModule } from './modules/insights/insights.module.js';
     CategoriesModule,
     TransactionsModule,
     InsightsModule,
+    GoalsModule,
+    RecurrencesModule,
+    JobsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: DomainExceptionFilter },
