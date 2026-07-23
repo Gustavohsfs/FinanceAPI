@@ -33,7 +33,7 @@ function Invoke-Gcloud {
   $previousErrorActionPreference = $ErrorActionPreference
   $ErrorActionPreference = 'Continue'
   if ($Capture) {
-    $output = & $script:gcloudCommand @Arguments 2>&1
+    $output = & $script:gcloudCommand @Arguments 2>$null
     $exitCode = $LASTEXITCODE
     $ErrorActionPreference = $previousErrorActionPreference
     if ($exitCode -ne 0) {
