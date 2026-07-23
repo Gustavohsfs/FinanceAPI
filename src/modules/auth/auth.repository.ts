@@ -175,21 +175,13 @@ export class AuthRepository {
     ]);
   }
 
-  async createPasswordReset(
-    userId: string,
-    tokenHash: string,
-    expiresAt: Date,
-  ): Promise<void> {
+  async createPasswordReset(userId: string, tokenHash: string, expiresAt: Date): Promise<void> {
     await this.prisma.passwordResetToken.create({
       data: { userId, tokenHash, expiresAt },
     });
   }
 
-  async consumePasswordReset(
-    tokenHash: string,
-    passwordHash: string,
-    now: Date,
-  ): Promise<boolean> {
+  async consumePasswordReset(tokenHash: string, passwordHash: string, now: Date): Promise<boolean> {
     return this.prisma.$transaction(async (transaction) => {
       const token = await transaction.passwordResetToken.findUnique({
         where: { tokenHash },

@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: fluxo
+      POSTGRES_USER: fluxo
+      POSTGRES_PASSWORD: fluxo
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U fluxo -d fluxo']
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - fluxo-postgres:/var/lib/postgresql/data
+
+volumes:
+  fluxo-postgres:

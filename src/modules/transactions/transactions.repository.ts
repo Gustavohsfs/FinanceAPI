@@ -4,10 +4,7 @@ import { z } from 'zod';
 import { decodeCursor, encodeCursor } from '../../common/crypto/cursor.js';
 import { DomainError, notFound } from '../../common/errors/domain.error.js';
 import { PrismaService } from '../../database/prisma.service.js';
-import {
-  Prisma,
-  type Transaction,
-} from '../../generated/prisma/client.js';
+import { Prisma, type Transaction } from '../../generated/prisma/client.js';
 import type { NewTransactionRow } from './domain/build-transactions.js';
 import {
   transactionResponseSchema,
@@ -138,10 +135,7 @@ export class TransactionsRepository {
     const dateWhere: Prisma.TransactionWhereInput =
       query.basis === 'cash'
         ? {
-            OR: [
-              { settledAt: dateFilter },
-              { settledAt: null, occurredAt: dateFilter },
-            ],
+            OR: [{ settledAt: dateFilter }, { settledAt: null, occurredAt: dateFilter }],
           }
         : { occurredAt: dateFilter };
     const where: Prisma.TransactionWhereInput = {
@@ -172,9 +166,10 @@ export class TransactionsRepository {
     return {
       data: page.map(toResponse),
       meta: {
-        nextCursor: hasMore && last
-          ? encodeCursor({ id: last.id, occurredAt: last.occurredAt.toISOString() })
-          : null,
+        nextCursor:
+          hasMore && last
+            ? encodeCursor({ id: last.id, occurredAt: last.occurredAt.toISOString() })
+            : null,
         hasMore,
         limit: query.limit,
       },
@@ -274,9 +269,7 @@ export class TransactionsRepository {
       userId,
       installmentGroupId: base.installmentGroupId,
       deletedAt: null,
-      ...(scope === 'future'
-        ? { installmentNumber: { gte: base.installmentNumber ?? 1 } }
-        : {}),
+      ...(scope === 'future' ? { installmentNumber: { gte: base.installmentNumber ?? 1 } } : {}),
     };
   }
 }

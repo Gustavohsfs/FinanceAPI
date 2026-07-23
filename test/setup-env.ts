@@ -2,8 +2,7 @@ process.env.NODE_ENV = 'test';
 process.env.PORT = '3000';
 process.env.DATABASE_URL =
   'postgresql://postgres:postgres@localhost:5432/fluxo_test?sslmode=disable';
-process.env.DIRECT_URL =
-  'postgresql://postgres:postgres@localhost:5432/fluxo_test?sslmode=disable';
+process.env.DIRECT_URL = 'postgresql://postgres:postgres@localhost:5432/fluxo_test?sslmode=disable';
 process.env.JWT_SECRET_CURRENT = 'test-access-secret-with-at-least-32-characters';
 process.env.REFRESH_TOKEN_PEPPER = 'test-refresh-secret-with-at-least-32-characters';
 process.env.CORS_ORIGINS = 'http://localhost:8081';

@@ -59,11 +59,7 @@ export class InsightsService {
     return this.repository.monthlyComparison(userId, months);
   }
 
-  budgetStatus(
-    userId: string,
-    month: string,
-    basis: 'accrual' | 'cash',
-  ): Promise<BudgetStatus[]> {
+  budgetStatus(userId: string, month: string, basis: 'accrual' | 'cash'): Promise<BudgetStatus[]> {
     return this.repository.budgetStatus(userId, month, basis);
   }
 }

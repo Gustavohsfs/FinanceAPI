@@ -5,6 +5,7 @@ import { Logger } from 'nestjs-pino';
 
 import { AppModule } from './app.module.js';
 import { validateEnvironment } from './config/env.schema.js';
+import { setupSwagger } from './openapi.js';
 
 export async function bootstrap(): Promise<NestFastifyApplication> {
   const env = validateEnvironment(process.env);
@@ -19,6 +20,7 @@ export async function bootstrap(): Promise<NestFastifyApplication> {
     credentials: true,
   });
   app.enableShutdownHooks();
+  setupSwagger(app);
   await app.listen(env.PORT, '0.0.0.0');
   return app;
 }

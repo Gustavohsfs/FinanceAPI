@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      PORT: '3000'
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fluxo_test
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/fluxo_test
+      JWT_SECRET_CURRENT: ci-access-secret-with-at-least-32-characters
+      REFRESH_TOKEN_PEPPER: ci-refresh-secret-with-at-least-32-characters
+      CORS_ORIGINS: http://localhost:8081
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm prisma:generate
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm test:e2e
+      - run: pnpm build
+      - run: pnpm openapi:generate
+      - run: git diff --exit-code -- docs/openapi.json

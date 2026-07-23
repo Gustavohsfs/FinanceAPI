@@ -3,10 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { notFound } from '../../common/errors/domain.error.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { Prisma, type Recurrence, type Transaction } from '../../generated/prisma/client.js';
-import {
-  addMonthsIso,
-  calculateSettlementDate,
-} from '../../shared/date/credit-card-settlement.js';
+import { addMonthsIso, calculateSettlementDate } from '../../shared/date/credit-card-settlement.js';
 import type { TransactionResponse } from '../transactions/transactions.schemas.js';
 import type { CreateRecurrenceDto } from './recurrences.schemas.js';
 

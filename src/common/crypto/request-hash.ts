@@ -15,5 +15,7 @@ function canonicalize(value: unknown): unknown {
 }
 
 export function canonicalRequestHash(value: unknown): string {
-  return createHash('sha256').update(JSON.stringify(canonicalize(value))).digest('hex');
+  return createHash('sha256')
+    .update(JSON.stringify(canonicalize(value)))
+    .digest('hex');
 }

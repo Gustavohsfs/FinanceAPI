@@ -3,12 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { notFound } from '../../common/errors/domain.error.js';
 import type { Goal } from '../../generated/prisma/client.js';
 import { CategoriesRepository } from '../categories/categories.repository.js';
-import type {
-  CreateGoalDto,
-  GoalProgress,
-  GoalResponse,
-  UpdateGoalDto,
-} from './goals.schemas.js';
+import type { CreateGoalDto, GoalProgress, GoalResponse, UpdateGoalDto } from './goals.schemas.js';
 import { GoalsRepository } from './goals.repository.js';
 
 function toResponse(goal: Goal): GoalResponse {
@@ -50,11 +45,7 @@ export class GoalsService {
     return toResponse(goal);
   }
 
-  async progress(
-    userId: string,
-    id: string,
-    basis: 'accrual' | 'cash',
-  ): Promise<GoalProgress> {
+  async progress(userId: string, id: string, basis: 'accrual' | 'cash'): Promise<GoalProgress> {
     const goal = await this.repository.findById(userId, id);
     if (!goal) throw notFound('Meta');
     const effectuatedCents = await this.repository.effectuated(userId, goal, basis);

@@ -47,9 +47,7 @@ export class UpdateGoalDto extends createZodDto(
     .strict()
     .refine((value) => Object.keys(value).length > 0, 'envie ao menos um campo'),
 ) {}
-export class GoalProgressQueryDto extends createZodDto(
-  z.object({ basis: basisSchema }).strict(),
-) {}
+export class GoalProgressQueryDto extends createZodDto(z.object({ basis: basisSchema }).strict()) {}
 
 export const goalResponseSchema = z.object({
   id: z.uuid(),

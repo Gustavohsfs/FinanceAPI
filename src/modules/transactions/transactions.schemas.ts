@@ -1,10 +1,7 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 
-import {
-  basisSchema,
-  isoDateTimeSchema,
-} from '../../common/dto/period.schema.js';
+import { basisSchema, isoDateTimeSchema } from '../../common/dto/period.schema.js';
 import { paginationMetaSchema } from '../../common/dto/pagination.schema.js';
 
 export const transactionTypeSchema = z.enum(['INCOME', 'EXPENSE', 'TRANSFER']);

@@ -8,10 +8,7 @@ export function readinessFromQuery(rows: readonly { ready: number }[]): boolean 
 }
 
 @Injectable()
-export class PrismaService
-  extends PrismaClient
-  implements OnModuleInit, OnApplicationShutdown
-{
+export class PrismaService extends PrismaClient implements OnModuleInit, OnApplicationShutdown {
   constructor() {
     const connectionString = process.env.DATABASE_URL;
     if (!connectionString) {

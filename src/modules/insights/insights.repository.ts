@@ -125,12 +125,7 @@ export class InsightsRepository {
     }));
   }
 
-  async balanceSeries(
-    userId: string,
-    from: Date,
-    to: Date,
-    basis: Basis,
-  ): Promise<BalancePoint[]> {
+  async balanceSeries(userId: string, from: Date, to: Date, basis: Basis): Promise<BalancePoint[]> {
     const date = basisExpression(basis);
     const rows = await this.prisma.$queryRaw<
       readonly { day: Date | string; cumulativeCents: unknown }[]

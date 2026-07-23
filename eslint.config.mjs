@@ -1,16 +1,10 @@
-import eslint from "@eslint/js";
-import prettier from "eslint-config-prettier";
-import tseslint from "typescript-eslint";
+import eslint from '@eslint/js';
+import prettier from 'eslint-config-prettier';
+import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: [
-      "dist/**",
-      "coverage/**",
-      "src/generated/**",
-      ".worktrees/**",
-      "eslint.config.mjs",
-    ],
+    ignores: ['dist/**', 'coverage/**', 'src/generated/**', '.worktrees/**', 'eslint.config.mjs'],
   },
   eslint.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
@@ -24,13 +18,10 @@ export default tseslint.config(
       },
     },
     rules: {
-      "@typescript-eslint/no-explicit-any": "error",
-      "@typescript-eslint/no-extraneous-class": "off",
-      "@typescript-eslint/consistent-type-imports": "error",
-      "@typescript-eslint/no-misused-promises": [
-        "error",
-        { "checksVoidReturn": false }
-      ]
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-extraneous-class': 'off',
+      '@typescript-eslint/consistent-type-imports': 'error',
+      '@typescript-eslint/no-misused-promises': ['error', { checksVoidReturn: false }],
     },
   },
 );

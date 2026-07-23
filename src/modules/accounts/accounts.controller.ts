@@ -5,11 +5,7 @@ import {
   CurrentUser,
   type AuthenticatedUser,
 } from '../../common/decorators/current-user.decorator.js';
-import {
-  type AccountResponse,
-  AccountResponseDto,
-  CreateAccountDto,
-} from './accounts.schemas.js';
+import { type AccountResponse, AccountResponseDto, CreateAccountDto } from './accounts.schemas.js';
 import { AccountsService } from './accounts.service.js';
 
 @Controller('v1/accounts')

@@ -42,11 +42,7 @@ export class CategoriesService {
     return toResponse(await this.repository.create(userId, input));
   }
 
-  async update(
-    userId: string,
-    id: string,
-    input: UpdateCategoryDto,
-  ): Promise<CategoryResponse> {
+  async update(userId: string, id: string, input: UpdateCategoryDto): Promise<CategoryResponse> {
     if (!(await this.repository.findById(userId, id))) throw notFound('Categoria');
     await this.ensureParent(userId, input.parentId);
     return toResponse(await this.repository.update(userId, id, input));
