@@ -2,6 +2,7 @@
   "name": "fluxo-api",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "description": "API financeira autoritativa do Fluxo",
   "license": "UNLICENSED",
   "packageManager": "pnpm@10.14.0",

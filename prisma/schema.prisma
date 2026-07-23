@@ -1,0 +1,307 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
+enum PaymentMethod {
+  CASH
+  PIX
+  DEBIT
+  CREDIT
+}
+
+enum AccountKind {
+  CHECKING
+  CASH
+  SAVINGS
+  INVESTMENT
+}
+
+enum GoalKind {
+  SAVING
+  INVESTMENT
+  SPEND_LIMIT
+}
+
+enum RecurrenceFrequency {
+  MONTHLY
+}
+
+enum TransactionSource {
+  MANUAL
+  RECURRENCE
+  OPEN_FINANCE
+}
+
+model User {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email        String    @unique @db.VarChar(254)
+  passwordHash String    @map("password_hash")
+  name         String    @db.VarChar(100)
+  timezone     String    @default("America/Sao_Paulo") @db.VarChar(64)
+  currency     String    @default("BRL") @db.Char(3)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  refreshTokens      RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+  transactions       Transaction[]
+  categories         Category[]
+  accounts           Account[]
+  creditCards        CreditCard[]
+  goals              Goal[]
+  recurrences        Recurrence[]
+  idempotencyKeys    IdempotencyKey[]
+  auditLogs          AuditLog[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  tokenHash  String    @unique @map("token_hash") @db.Char(64)
+  familyId   String    @map("family_id") @db.Uuid
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(3)
+  userAgent  String?   @map("user_agent") @db.VarChar(512)
+  ipAddress  String?   @map("ip_address") @db.VarChar(64)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@index([userId, familyId])
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash") @db.Char(64)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(3)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("password_reset_tokens")
+}
+
+model Account {
+  id                  String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId              String      @map("user_id") @db.Uuid
+  name                String      @db.VarChar(80)
+  kind                AccountKind
+  openingBalanceCents Int         @default(0) @map("opening_balance_cents")
+  currency            String      @default("BRL") @db.Char(3)
+  createdAt           DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt           DateTime?   @map("deleted_at") @db.Timestamptz(3)
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  creditCards  CreditCard[]
+  transactions Transaction[]
+  recurrences  Recurrence[]
+
+  @@index([userId, deletedAt])
+  @@map("accounts")
+}
+
+model CreditCard {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  accountId  String    @map("account_id") @db.Uuid
+  name       String    @db.VarChar(80)
+  limitCents Int       @map("limit_cents")
+  closingDay Int       @map("closing_day")
+  dueDay     Int       @map("due_day")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt  DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  account      Account       @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  transactions Transaction[]
+  recurrences  Recurrence[]
+
+  @@index([userId, deletedAt])
+  @@index([userId, accountId])
+  @@map("credit_cards")
+}
+
+model Category {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId             String    @map("user_id") @db.Uuid
+  name               String    @db.VarChar(40)
+  icon               String    @db.VarChar(64)
+  color              String    @db.Char(7)
+  type               TransactionType
+  parentId           String?   @map("parent_id") @db.Uuid
+  monthlyBudgetCents Int?      @map("monthly_budget_cents")
+  isArchived         Boolean   @default(false) @map("is_archived")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt          DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  parent       Category?     @relation("CategoryTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children     Category[]    @relation("CategoryTree")
+  transactions Transaction[]
+  goals        Goal[]
+  recurrences  Recurrence[]
+
+  @@unique([userId, name, type])
+  @@index([userId, type, isArchived])
+  @@index([userId, parentId])
+  @@map("categories")
+}
+
+model Transaction {
+  id                 String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId             String            @map("user_id") @db.Uuid
+  type               TransactionType
+  amountCents        Int               @map("amount_cents")
+  description        String            @db.VarChar(120)
+  occurredAt         DateTime          @map("occurred_at") @db.Timestamptz(3)
+  settledAt          DateTime?         @map("settled_at") @db.Timestamptz(3)
+  categoryId         String?           @map("category_id") @db.Uuid
+  accountId          String            @map("account_id") @db.Uuid
+  creditCardId       String?           @map("credit_card_id") @db.Uuid
+  paymentMethod      PaymentMethod     @map("payment_method")
+  installmentGroupId String?           @map("installment_group_id") @db.Uuid
+  installmentNumber  Int?              @map("installment_number")
+  installmentTotal   Int?              @map("installment_total")
+  isProjected        Boolean           @default(false) @map("is_projected")
+  recurrenceId       String?           @map("recurrence_id") @db.Uuid
+  currency           String            @default("BRL") @db.Char(3)
+  notes              String?
+  externalId         String?           @map("external_id") @db.VarChar(191)
+  source             TransactionSource @default(MANUAL)
+  createdAt          DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt          DateTime?         @map("deleted_at") @db.Timestamptz(3)
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  category   Category?   @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  account    Account     @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  creditCard CreditCard? @relation(fields: [creditCardId], references: [id], onDelete: Restrict)
+  recurrence Recurrence? @relation(fields: [recurrenceId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, source, externalId])
+  @@index([userId, occurredAt(sort: Desc), id])
+  @@index([userId, categoryId, occurredAt])
+  @@index([userId, installmentGroupId])
+  @@index([userId, settledAt])
+  @@index([userId, recurrenceId])
+  @@map("transactions")
+}
+
+model Recurrence {
+  id               String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String              @map("user_id") @db.Uuid
+  type             TransactionType
+  amountCents      Int                 @map("amount_cents")
+  description      String              @db.VarChar(120)
+  categoryId       String?             @map("category_id") @db.Uuid
+  accountId        String              @map("account_id") @db.Uuid
+  creditCardId     String?             @map("credit_card_id") @db.Uuid
+  paymentMethod    PaymentMethod       @map("payment_method")
+  frequency        RecurrenceFrequency @default(MONTHLY)
+  dayOfMonth       Int                 @map("day_of_month")
+  nextOccurrenceAt DateTime            @map("next_occurrence_at") @db.Timestamptz(3)
+  isActive         Boolean             @default(true) @map("is_active")
+  currency         String              @default("BRL") @db.Char(3)
+  notes            String?
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt        DateTime?           @map("deleted_at") @db.Timestamptz(3)
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  category     Category?     @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  account      Account       @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  creditCard   CreditCard?   @relation(fields: [creditCardId], references: [id], onDelete: Restrict)
+  transactions Transaction[]
+
+  @@index([userId, nextOccurrenceAt])
+  @@index([userId, isActive, deletedAt])
+  @@map("recurrences")
+}
+
+model Goal {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  name        String    @db.VarChar(50)
+  kind        GoalKind
+  targetCents Int       @map("target_cents")
+  categoryId  String?   @map("category_id") @db.Uuid
+  startDate   DateTime  @map("start_date") @db.Timestamptz(3)
+  deadline    DateTime  @db.Timestamptz(3)
+  recurrence  String    @default("ONCE") @db.VarChar(16)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@index([userId, kind, deletedAt])
+  @@index([userId, categoryId])
+  @@map("goals")
+}
+
+model IdempotencyKey {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  key          String   @db.Uuid
+  requestHash  String   @map("request_hash") @db.Char(64)
+  responseBody Json     @map("response_body")
+  statusCode   Int      @map("status_code")
+  expiresAt    DateTime @map("expires_at") @db.Timestamptz(3)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([userId, expiresAt])
+  @@map("idempotency_keys")
+}
+
+model AuditLog {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  entityType String   @map("entity_type") @db.VarChar(40)
+  entityId   String   @map("entity_id") @db.Uuid
+  action     String   @db.VarChar(40)
+  before     Json?
+  after      Json?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, entityType, entityId, createdAt(sort: Desc)])
+  @@map("audit_logs")
+}
+
+model JobLock {
+  name        String   @id @db.VarChar(100)
+  lockedBy    String   @map("locked_by") @db.VarChar(100)
+  lockedUntil DateTime @map("locked_until") @db.Timestamptz(3)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("job_locks")
+}
