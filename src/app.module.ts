@@ -12,6 +12,9 @@ import { configuration } from './config/configuration.js';
 import { validateEnvironment } from './config/env.schema.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { AuthModule } from './modules/auth/index.js';
+import { AccountsModule } from './modules/accounts/accounts.module.js';
+import { CategoriesModule } from './modules/categories/categories.module.js';
+import { CreditCardsModule } from './modules/credit-cards/credit-cards.module.js';
 
 @Module({
   imports: [
@@ -40,6 +43,9 @@ import { AuthModule } from './modules/auth/index.js';
     }),
     HealthModule,
     AuthModule,
+    AccountsModule,
+    CreditCardsModule,
+    CategoriesModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: DomainExceptionFilter },
