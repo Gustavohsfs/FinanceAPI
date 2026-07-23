@@ -23,6 +23,7 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main.js",
+    "maintenance": "node dist/maintenance.js",
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\" \"scripts/**/*.ts\" \"*.ts\" \"*.json\" \"*.mjs\" \".github/**/*.yml\" \"docker-compose.yml\" \"docs/openapi.json\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\" \"scripts/**/*.ts\" \"*.ts\" \"*.json\" \"*.mjs\" \".github/**/*.yml\" \"docker-compose.yml\" \"docs/openapi.json\"",
