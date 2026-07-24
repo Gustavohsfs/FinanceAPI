@@ -14,6 +14,16 @@ export const createAccountSchema = z
 
 export class CreateAccountDto extends createZodDto(createAccountSchema) {}
 
+export const updateAccountSchema = createAccountSchema
+  .extend({
+    openingBalanceCents: createAccountSchema.shape.openingBalanceCents.unwrap(),
+    currency: createAccountSchema.shape.currency.unwrap(),
+  })
+  .partial()
+  .refine((value) => Object.keys(value).length > 0, 'envie ao menos um campo');
+
+export class UpdateAccountDto extends createZodDto(updateAccountSchema) {}
+
 export const accountResponseSchema = z.object({
   id: z.uuid(),
   userId: z.uuid(),

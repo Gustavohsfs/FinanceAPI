@@ -14,6 +14,13 @@ export const createCreditCardSchema = z
   .strict();
 
 export class CreateCreditCardDto extends createZodDto(createCreditCardSchema) {}
+
+export const updateCreditCardSchema = createCreditCardSchema
+  .partial()
+  .refine((value) => Object.keys(value).length > 0, 'envie ao menos um campo');
+
+export class UpdateCreditCardDto extends createZodDto(updateCreditCardSchema) {}
+
 export class InvoiceQueryDto extends createZodDto(z.object({ month: monthSchema }).strict()) {}
 
 export const creditCardResponseSchema = z.object({
