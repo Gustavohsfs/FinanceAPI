@@ -10,6 +10,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { ApiBody, ApiParam } from '@nestjs/swagger';
 import { ZodResponse } from 'nestjs-zod';
 
 import {
@@ -48,6 +49,8 @@ export class CreditCardsController {
 
   @Patch(':id')
   @ZodResponse({ type: CreditCardResponseDto })
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
+  @ApiBody({ type: UpdateCreditCardDto })
   update(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
@@ -58,6 +61,7 @@ export class CreditCardsController {
 
   @Delete(':id')
   @HttpCode(204)
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
   async delete(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,

@@ -9,6 +9,7 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
+import { ApiBody, ApiParam } from '@nestjs/swagger';
 import { ZodResponse } from 'nestjs-zod';
 
 import {
@@ -44,6 +45,8 @@ export class AccountsController {
 
   @Patch(':id')
   @ZodResponse({ type: AccountResponseDto })
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
+  @ApiBody({ type: UpdateAccountDto })
   update(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
@@ -54,6 +57,7 @@ export class AccountsController {
 
   @Delete(':id')
   @HttpCode(204)
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
   async delete(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
