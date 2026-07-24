@@ -199,6 +199,7 @@ export class TransactionsRepository {
       ...(query.type ? { type: query.type } : {}),
       ...(query.categoryId ? { categoryId: query.categoryId } : {}),
       ...(query.accountId ? { accountId: query.accountId } : {}),
+      ...(query.creditCardId ? { creditCardId: query.creditCardId } : {}),
       ...(query.method ? { paymentMethod: query.method } : {}),
       ...(cursor
         ? {

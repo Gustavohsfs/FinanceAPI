@@ -78,25 +78,26 @@ export class TransactionScopeQueryDto extends createZodDto(
   z.object({ scope: z.enum(['one', 'future', 'all']).default('one') }).strict(),
 ) {}
 
-export class TransactionsQueryDto extends createZodDto(
-  z
-    .object({
-      from: isoDateTimeSchema.optional(),
-      to: isoDateTimeSchema.optional(),
-      type: transactionTypeSchema.optional(),
-      categoryId: z.uuid().optional(),
-      accountId: z.uuid().optional(),
-      method: paymentMethodSchema.optional(),
-      basis: basisSchema,
-      cursor: z.string().min(1).optional(),
-      limit: z.coerce.number().int().min(1).max(100).default(50),
-    })
-    .strict()
-    .refine((value) => !value.from || !value.to || value.from <= value.to, {
-      path: ['to'],
-      message: 'to deve ser posterior a from',
-    }),
-) {}
+export const transactionsQuerySchema = z
+  .object({
+    from: isoDateTimeSchema.optional(),
+    to: isoDateTimeSchema.optional(),
+    type: transactionTypeSchema.optional(),
+    categoryId: z.uuid().optional(),
+    accountId: z.uuid().optional(),
+    creditCardId: z.uuid().optional(),
+    method: paymentMethodSchema.optional(),
+    basis: basisSchema,
+    cursor: z.string().min(1).optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(50),
+  })
+  .strict()
+  .refine((value) => !value.from || !value.to || value.from <= value.to, {
+    path: ['to'],
+    message: 'to deve ser posterior a from',
+  });
+
+export class TransactionsQueryDto extends createZodDto(transactionsQuerySchema) {}
 
 export const transactionResponseSchema = z.object({
   id: z.uuid(),
