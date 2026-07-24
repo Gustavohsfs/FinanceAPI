@@ -99,10 +99,8 @@ export class CreditCardsRepository {
     try {
       return await this.prisma.$transaction(
         async (database) => {
-          if (input.accountId !== undefined) {
-            const userExists = await lockUserForUpdate(database, userId);
-            if (!userExists) throw notFound('Conta');
-          }
+          const userExists = await lockUserForUpdate(database, userId);
+          if (!userExists) return null;
 
           const lockedCard = await lockActiveCreditCardForUpdate(database, userId, id);
           if (!lockedCard) return null;
@@ -207,6 +205,9 @@ export class CreditCardsRepository {
     try {
       return await this.prisma.$transaction(
         async (database) => {
+          const userExists = await lockUserForUpdate(database, userId);
+          if (!userExists) return { status: 'not-found' };
+
           const lockedCard = await lockActiveCreditCardForUpdate(database, userId, id);
           if (!lockedCard) return { status: 'not-found' };
 

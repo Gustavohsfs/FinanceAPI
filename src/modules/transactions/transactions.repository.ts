@@ -24,6 +24,15 @@ export type TransactionSettlementCalculator = (
   dueDay: number,
 ) => Date;
 
+function invalidPaymentMethodRelation(): DomainError {
+  return new DomainError(
+    'TRANSACTION_INVALID_PAYMENT_METHOD',
+    422,
+    'Método de pagamento inválido',
+    'Transações no crédito exigem cartão ativo; os demais métodos não aceitam cartão.',
+  );
+}
+
 function toResponse(transaction: Transaction): TransactionResponse {
   return {
     id: transaction.id,
@@ -254,17 +263,37 @@ export class TransactionsRepository {
           if (!account) throw notFound('Conta');
         }
 
+        const effectiveRelations = before.map((transaction) => {
+          const paymentMethod = input.paymentMethod ?? transaction.paymentMethod;
+          const creditCardId =
+            input.creditCardId !== undefined ? input.creditCardId : transaction.creditCardId;
+          if (
+            (paymentMethod === 'CREDIT' && !creditCardId) ||
+            (paymentMethod !== 'CREDIT' && creditCardId !== null)
+          ) {
+            throw invalidPaymentMethodRelation();
+          }
+          return { transactionId: transaction.id, paymentMethod, creditCardId };
+        });
         const creditCardIds = [
           ...new Set([
             ...before.flatMap((item) => (item.creditCardId ? [item.creditCardId] : [])),
-            ...(input.creditCardId ? [input.creditCardId] : []),
+            ...effectiveRelations.flatMap((item) => (item.creditCardId ? [item.creditCardId] : [])),
           ]),
         ].sort();
         const lockedCards = new Map<string, { id: string; closingDay: number; dueDay: number }>();
         for (const creditCardId of creditCardIds) {
           const card = await lockActiveCreditCardForUpdate(database, userId, creditCardId);
           if (card) lockedCards.set(card.id, card);
-          if (!card && input.creditCardId === creditCardId) throw notFound('Cartão');
+        }
+        for (const relation of effectiveRelations) {
+          if (
+            relation.paymentMethod === 'CREDIT' &&
+            relation.creditCardId &&
+            !lockedCards.has(relation.creditCardId)
+          ) {
+            throw notFound('Cartão');
+          }
         }
 
         const recalculatesSettlement =
@@ -273,11 +302,11 @@ export class TransactionsRepository {
             input.creditCardId !== undefined ||
             input.paymentMethod !== undefined);
         for (const transaction of before) {
+          const relation = effectiveRelations.find((item) => item.transactionId === transaction.id);
+          if (!relation) throw new Error('Transaction relation snapshot missing');
           const occurredAt =
             input.occurredAt !== undefined ? new Date(input.occurredAt) : transaction.occurredAt;
-          const paymentMethod = input.paymentMethod ?? transaction.paymentMethod;
-          const creditCardId =
-            input.creditCardId !== undefined ? input.creditCardId : transaction.creditCardId;
+          const { paymentMethod, creditCardId } = relation;
           let settledAt: Date | null | undefined;
           if (input.settledAt !== undefined) {
             settledAt = input.settledAt ? new Date(input.settledAt) : null;
