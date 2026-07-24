@@ -61,6 +61,13 @@ export class AccountsRepository {
   async softDeleteGuarded(userId: string, id: string): Promise<AccountDeleteFacts> {
     return this.prisma.$transaction(
       async (database) => {
+        await database.$queryRaw(Prisma.sql`
+          SELECT id
+          FROM users
+          WHERE id = ${userId}::uuid
+          FOR UPDATE
+        `);
+
         const target = await database.account.findFirst({
           where: { id, userId, deletedAt: null },
         });
@@ -78,10 +85,11 @@ export class AccountsRepository {
         if (activeCards > 0) return { status: 'has-active-cards' };
         if (activeRecurrences > 0) return { status: 'has-active-recurrences' };
 
-        await database.account.update({
-          where: { id },
+        const deleted = await database.account.updateMany({
+          where: { id, userId, deletedAt: null },
           data: { deletedAt: new Date() },
         });
+        if (deleted.count !== 1) return { status: 'not-found' };
         return { status: 'deleted' };
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
