@@ -296,6 +296,7 @@ export class CreditCardsRepository {
       WHERE user_id = ${userId}::uuid
         AND credit_card_id = ${creditCardId}::uuid
         AND type = 'EXPENSE'
+        AND payment_method = 'CREDIT'
         AND deleted_at IS NULL
         AND to_char(
           COALESCE(settled_at, occurred_at) AT TIME ZONE 'America/Sao_Paulo',

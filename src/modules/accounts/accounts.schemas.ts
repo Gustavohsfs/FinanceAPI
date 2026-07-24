@@ -20,7 +20,8 @@ export const updateAccountSchema = createAccountSchema
     currency: createAccountSchema.shape.currency.unwrap(),
   })
   .partial()
-  .refine((value) => Object.keys(value).length > 0, 'envie ao menos um campo');
+  .refine((value) => Object.keys(value).length > 0, 'envie ao menos um campo')
+  .meta({ minProperties: 1 });
 
 export class UpdateAccountDto extends createZodDto(updateAccountSchema) {}
 

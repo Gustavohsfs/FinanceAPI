@@ -136,13 +136,13 @@ export class TransactionsRepository {
         const lockedCards = new Map<string, { id: string; closingDay: number; dueDay: number }>();
         for (const creditCardId of creditCardIds) {
           const card = await lockActiveCreditCardForUpdate(database, userId, creditCardId);
-          if (!card) throw notFound('CartÃ£o');
+          if (!card) throw notFound('Cartão');
           lockedCards.set(card.id, card);
         }
         const settledRows = rows.map((row): NewTransactionRow => {
           if (row.paymentMethod !== 'CREDIT' || !row.creditCardId) return row;
           const card = lockedCards.get(row.creditCardId);
-          if (!card) throw notFound('CartÃ£o');
+          if (!card) throw notFound('Cartão');
           return {
             ...row,
             settledAt: calculateSettlement(row.occurredAt, card.closingDay, card.dueDay),
@@ -192,23 +192,23 @@ export class TransactionsRepository {
             OR: [{ settledAt: dateFilter }, { settledAt: null, occurredAt: dateFilter }],
           }
         : { occurredAt: dateFilter };
+    const cursorWhere: Prisma.TransactionWhereInput | undefined = cursor
+      ? {
+          OR: [
+            { occurredAt: { lt: new Date(cursor.occurredAt) } },
+            { occurredAt: new Date(cursor.occurredAt), id: { gt: cursor.id } },
+          ],
+        }
+      : undefined;
     const where: Prisma.TransactionWhereInput = {
       userId,
       deletedAt: null,
-      ...dateWhere,
+      AND: [dateWhere, ...(cursorWhere ? [cursorWhere] : [])],
       ...(query.type ? { type: query.type } : {}),
       ...(query.categoryId ? { categoryId: query.categoryId } : {}),
       ...(query.accountId ? { accountId: query.accountId } : {}),
       ...(query.creditCardId ? { creditCardId: query.creditCardId } : {}),
       ...(query.method ? { paymentMethod: query.method } : {}),
-      ...(cursor
-        ? {
-            OR: [
-              { occurredAt: { lt: new Date(cursor.occurredAt) } },
-              { occurredAt: new Date(cursor.occurredAt), id: { gt: cursor.id } },
-            ],
-          }
-        : {}),
     };
     const rows = await this.prisma.transaction.findMany({
       where,

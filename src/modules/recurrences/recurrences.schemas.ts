@@ -23,7 +23,23 @@ export const createRecurrenceSchema = z
     currency: z.string().length(3).default('BRL'),
     notes: z.string().max(2_000).optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    if (value.paymentMethod === 'CREDIT' && !value.creditCardId) {
+      context.addIssue({
+        code: 'custom',
+        path: ['creditCardId'],
+        message: 'pagamento no crédito exige um cartão',
+      });
+    }
+    if (value.paymentMethod !== 'CREDIT' && value.creditCardId) {
+      context.addIssue({
+        code: 'custom',
+        path: ['creditCardId'],
+        message: 'cartão só pode ser informado para pagamento no crédito',
+      });
+    }
+  });
 export class CreateRecurrenceDto extends createZodDto(createRecurrenceSchema) {}
 
 export const recurrenceResponseSchema = z.object({

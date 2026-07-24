@@ -17,7 +17,8 @@ export class CreateCreditCardDto extends createZodDto(createCreditCardSchema) {}
 
 export const updateCreditCardSchema = createCreditCardSchema
   .partial()
-  .refine((value) => Object.keys(value).length > 0, 'envie ao menos um campo');
+  .refine((value) => Object.keys(value).length > 0, 'envie ao menos um campo')
+  .meta({ minProperties: 1 });
 
 export class UpdateCreditCardDto extends createZodDto(updateCreditCardSchema) {}
 

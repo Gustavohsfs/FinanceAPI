@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import { notFound } from '../../common/errors/domain.error.js';
+import { DomainError, notFound } from '../../common/errors/domain.error.js';
 import {
   lockActiveCreditCardForUpdate,
   lockUserForUpdate,
@@ -10,6 +10,27 @@ import { Prisma, type Recurrence, type Transaction } from '../../generated/prism
 import { addMonthsIso, calculateSettlementDate } from '../../shared/date/credit-card-settlement.js';
 import type { TransactionResponse } from '../transactions/transactions.schemas.js';
 import type { CreateRecurrenceDto } from './recurrences.schemas.js';
+
+function invalidPaymentMethodRelation(): DomainError {
+  return new DomainError(
+    'TRANSACTION_INVALID_PAYMENT_METHOD',
+    422,
+    'Método de pagamento inválido',
+    'Transações no crédito exigem cartão ativo; os demais métodos não aceitam cartão.',
+  );
+}
+
+function assertPaymentMethodRelation(
+  paymentMethod: Recurrence['paymentMethod'],
+  creditCardId: string | null | undefined,
+): void {
+  if (
+    (paymentMethod === 'CREDIT' && !creditCardId) ||
+    (paymentMethod !== 'CREDIT' && creditCardId !== null && creditCardId !== undefined)
+  ) {
+    throw invalidPaymentMethodRelation();
+  }
+}
 
 function transactionResponse(transaction: Transaction): TransactionResponse {
   return {
@@ -54,6 +75,8 @@ export class RecurrencesRepository {
       async (database) => {
         const userExists = await lockUserForUpdate(database, userId);
         if (!userExists) throw notFound('Conta');
+        assertPaymentMethodRelation(input.paymentMethod, input.creditCardId);
+
         const account = await database.account.findFirst({
           where: { id: input.accountId, userId, deletedAt: null },
           select: { id: true },
@@ -72,7 +95,7 @@ export class RecurrencesRepository {
             description: input.description,
             ...(input.categoryId ? { categoryId: input.categoryId } : {}),
             accountId: input.accountId,
-            ...(input.creditCardId ? { creditCardId: input.creditCardId } : {}),
+            creditCardId: input.creditCardId ?? null,
             paymentMethod: input.paymentMethod,
             frequency: input.frequency,
             dayOfMonth: input.dayOfMonth,
@@ -132,30 +155,41 @@ export class RecurrencesRepository {
     const horizon = new Date(Date.now() + 45 * 86_400_000);
     const recurrences = await this.prisma.recurrence.findMany({
       where: { isActive: true, deletedAt: null, nextOccurrenceAt: { lte: horizon } },
-      include: { creditCard: true },
+      select: { id: true, userId: true },
     });
     for (const recurrence of recurrences) {
-      await this.materializeRecurrence(recurrence, horizon);
+      await this.materializeRecurrence(recurrence.userId, recurrence.id, horizon);
     }
   }
 
-  private async materializeRecurrence(recurrence: Recurrence, horizon: Date): Promise<void> {
+  private async materializeRecurrence(
+    userId: string,
+    recurrenceId: string,
+    horizon: Date,
+  ): Promise<void> {
     await this.prisma.$transaction(
       async (database) => {
-        const userExists = await lockUserForUpdate(database, recurrence.userId);
+        const userExists = await lockUserForUpdate(database, userId);
         if (!userExists) throw notFound('Conta');
+        const recurrence = await database.recurrence.findFirst({
+          where: {
+            id: recurrenceId,
+            userId,
+            isActive: true,
+            deletedAt: null,
+          },
+        });
+        if (!recurrence) return;
+        assertPaymentMethodRelation(recurrence.paymentMethod, recurrence.creditCardId);
+
         const account = await database.account.findFirst({
-          where: { id: recurrence.accountId, userId: recurrence.userId, deletedAt: null },
+          where: { id: recurrence.accountId, userId, deletedAt: null },
           select: { id: true },
         });
         if (!account) throw notFound('Conta');
 
         const lockedCard = recurrence.creditCardId
-          ? await lockActiveCreditCardForUpdate(
-              database,
-              recurrence.userId,
-              recurrence.creditCardId,
-            )
+          ? await lockActiveCreditCardForUpdate(database, userId, recurrence.creditCardId)
           : null;
         if (recurrence.creditCardId && !lockedCard) throw notFound('Cartão');
 
@@ -171,13 +205,13 @@ export class RecurrencesRepository {
           await database.transaction.upsert({
             where: {
               userId_source_externalId: {
-                userId: recurrence.userId,
+                userId,
                 source: 'RECURRENCE',
                 externalId,
               },
             },
             create: {
-              userId: recurrence.userId,
+              userId,
               type: recurrence.type,
               amountCents: recurrence.amountCents,
               description: recurrence.description,
@@ -199,7 +233,7 @@ export class RecurrencesRepository {
           occurrence = addMonthsIso(occurrence, 1);
         }
         await database.recurrence.update({
-          where: { id: recurrence.id, userId: recurrence.userId },
+          where: { id: recurrence.id, userId, isActive: true, deletedAt: null },
           data: { nextOccurrenceAt: new Date(occurrence) },
         });
       },
