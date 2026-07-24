@@ -3,7 +3,10 @@ import { z } from 'zod';
 
 import { decodeCursor, encodeCursor } from '../../common/crypto/cursor.js';
 import { DomainError, notFound } from '../../common/errors/domain.error.js';
-import { lockActiveCreditCardForUpdate } from '../../database/financial-row-locks.js';
+import {
+  lockActiveCreditCardForUpdate,
+  lockUserForUpdate,
+} from '../../database/financial-row-locks.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { Prisma, type Transaction } from '../../generated/prisma/client.js';
 import type { NewTransactionRow } from './domain/build-transactions.js';
@@ -101,6 +104,17 @@ export class TransactionsRepository {
             );
           }
           return z.array(transactionResponseSchema).parse(previous.responseBody);
+        }
+
+        const userExists = await lockUserForUpdate(database, userId);
+        if (!userExists) throw notFound('Conta');
+        const accountIds = [...new Set(rows.map((row) => row.accountId))].sort();
+        for (const accountId of accountIds) {
+          const account = await database.account.findFirst({
+            where: { id: accountId, userId, deletedAt: null },
+            select: { id: true },
+          });
+          if (!account) throw notFound('Conta');
         }
 
         const creditCardIds = [
@@ -218,47 +232,100 @@ export class TransactionsRepository {
     id: string,
     scope: 'one' | 'future' | 'all',
     input: UpdateTransactionDto,
+    calculateSettlement: TransactionSettlementCalculator,
   ): Promise<TransactionResponse[]> {
-    return this.prisma.$transaction(async (database) => {
-      const base = await database.transaction.findFirst({
-        where: { id, userId, deletedAt: null },
-      });
-      if (!base) throw notFound('Transação');
-      const where = this.scopeWhere(userId, base, scope);
-      const before = await database.transaction.findMany({ where });
-      await database.transaction.updateMany({
-        where,
-        data: {
-          ...(input.amountCents !== undefined ? { amountCents: input.amountCents } : {}),
-          ...(input.description !== undefined ? { description: input.description } : {}),
-          ...(input.occurredAt !== undefined ? { occurredAt: new Date(input.occurredAt) } : {}),
-          ...(input.settledAt !== undefined
-            ? { settledAt: input.settledAt ? new Date(input.settledAt) : null }
-            : {}),
-          ...(input.categoryId !== undefined ? { categoryId: input.categoryId } : {}),
-          ...(input.accountId !== undefined ? { accountId: input.accountId } : {}),
-          ...(input.creditCardId !== undefined ? { creditCardId: input.creditCardId } : {}),
-          ...(input.paymentMethod !== undefined ? { paymentMethod: input.paymentMethod } : {}),
-          ...(input.notes !== undefined ? { notes: input.notes } : {}),
-          ...(input.isProjected !== undefined ? { isProjected: input.isProjected } : {}),
-        },
-      });
-      const after = await database.transaction.findMany({
-        where: { id: { in: before.map((item) => item.id) }, userId, deletedAt: null },
-        orderBy: [{ installmentNumber: 'asc' }, { id: 'asc' }],
-      });
-      await database.auditLog.createMany({
-        data: after.map((item, index) => ({
-          userId,
-          entityType: 'transaction',
-          entityId: item.id,
-          action: 'updated',
-          before: responseJson([toResponse(before[index] ?? item)]),
-          after: responseJson([toResponse(item)]),
-        })),
-      });
-      return after.map(toResponse);
-    });
+    return this.prisma.$transaction(
+      async (database) => {
+        const userExists = await lockUserForUpdate(database, userId);
+        if (!userExists) throw notFound('Transação');
+
+        const base = await database.transaction.findFirst({
+          where: { id, userId, deletedAt: null },
+        });
+        if (!base) throw notFound('Transação');
+        const where = this.scopeWhere(userId, base, scope);
+        const before = await database.transaction.findMany({ where });
+
+        if (input.accountId !== undefined) {
+          const account = await database.account.findFirst({
+            where: { id: input.accountId, userId, deletedAt: null },
+            select: { id: true },
+          });
+          if (!account) throw notFound('Conta');
+        }
+
+        const creditCardIds = [
+          ...new Set([
+            ...before.flatMap((item) => (item.creditCardId ? [item.creditCardId] : [])),
+            ...(input.creditCardId ? [input.creditCardId] : []),
+          ]),
+        ].sort();
+        const lockedCards = new Map<string, { id: string; closingDay: number; dueDay: number }>();
+        for (const creditCardId of creditCardIds) {
+          const card = await lockActiveCreditCardForUpdate(database, userId, creditCardId);
+          if (card) lockedCards.set(card.id, card);
+          if (!card && input.creditCardId === creditCardId) throw notFound('Cartão');
+        }
+
+        const recalculatesSettlement =
+          input.settledAt === undefined &&
+          (input.occurredAt !== undefined ||
+            input.creditCardId !== undefined ||
+            input.paymentMethod !== undefined);
+        for (const transaction of before) {
+          const occurredAt =
+            input.occurredAt !== undefined ? new Date(input.occurredAt) : transaction.occurredAt;
+          const paymentMethod = input.paymentMethod ?? transaction.paymentMethod;
+          const creditCardId =
+            input.creditCardId !== undefined ? input.creditCardId : transaction.creditCardId;
+          let settledAt: Date | null | undefined;
+          if (input.settledAt !== undefined) {
+            settledAt = input.settledAt ? new Date(input.settledAt) : null;
+          } else if (recalculatesSettlement) {
+            if (paymentMethod === 'CREDIT' && creditCardId) {
+              const card = lockedCards.get(creditCardId);
+              if (!card) throw notFound('Cartão');
+              settledAt = calculateSettlement(occurredAt, card.closingDay, card.dueDay);
+            } else {
+              settledAt = null;
+            }
+          }
+
+          await database.transaction.update({
+            where: { id: transaction.id, userId, deletedAt: null },
+            data: {
+              ...(input.amountCents !== undefined ? { amountCents: input.amountCents } : {}),
+              ...(input.description !== undefined ? { description: input.description } : {}),
+              ...(input.occurredAt !== undefined ? { occurredAt } : {}),
+              ...(settledAt !== undefined ? { settledAt } : {}),
+              ...(input.categoryId !== undefined ? { categoryId: input.categoryId } : {}),
+              ...(input.accountId !== undefined ? { accountId: input.accountId } : {}),
+              ...(input.creditCardId !== undefined ? { creditCardId: input.creditCardId } : {}),
+              ...(input.paymentMethod !== undefined ? { paymentMethod } : {}),
+              ...(input.notes !== undefined ? { notes: input.notes } : {}),
+              ...(input.isProjected !== undefined ? { isProjected: input.isProjected } : {}),
+            },
+          });
+        }
+        const after = await database.transaction.findMany({
+          where: { id: { in: before.map((item) => item.id) }, userId, deletedAt: null },
+          orderBy: [{ installmentNumber: 'asc' }, { id: 'asc' }],
+        });
+        const beforeById = new Map(before.map((item) => [item.id, item]));
+        await database.auditLog.createMany({
+          data: after.map((item) => ({
+            userId,
+            entityType: 'transaction',
+            entityId: item.id,
+            action: 'updated',
+            before: responseJson([toResponse(beforeById.get(item.id) ?? item)]),
+            after: responseJson([toResponse(item)]),
+          })),
+        });
+        return after.map(toResponse);
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
+    );
   }
 
   async softDeleteScoped(

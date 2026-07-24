@@ -247,34 +247,45 @@ export class CreditCardsRepository {
   }
 
   async create(userId: string, input: CreateCreditCardDto) {
-    return this.prisma.$transaction(async (transaction) => {
-      const card = await transaction.creditCard.create({
-        data: {
-          userId,
-          accountId: input.accountId,
-          name: input.name,
-          limitCents: input.limitCents,
-          closingDay: input.closingDay,
-          dueDay: input.dueDay,
-        },
-      });
-      await transaction.auditLog.create({
-        data: {
-          userId,
-          entityType: 'credit_card',
-          entityId: card.id,
-          action: 'created',
-          after: {
+    return this.prisma.$transaction(
+      async (transaction) => {
+        const userExists = await lockUserForUpdate(transaction, userId);
+        if (!userExists) throw notFound('Conta');
+        const account = await transaction.account.findFirst({
+          where: { id: input.accountId, userId, deletedAt: null },
+          select: { id: true },
+        });
+        if (!account) throw notFound('Conta');
+
+        const card = await transaction.creditCard.create({
+          data: {
+            userId,
             accountId: input.accountId,
             name: input.name,
             limitCents: input.limitCents,
             closingDay: input.closingDay,
             dueDay: input.dueDay,
           },
-        },
-      });
-      return card;
-    });
+        });
+        await transaction.auditLog.create({
+          data: {
+            userId,
+            entityType: 'credit_card',
+            entityId: card.id,
+            action: 'created',
+            after: {
+              accountId: input.accountId,
+              name: input.name,
+              limitCents: input.limitCents,
+              closingDay: input.closingDay,
+              dueDay: input.dueDay,
+            },
+          },
+        });
+        return card;
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
+    );
   }
 
   async invoiceTotal(userId: string, creditCardId: string, month: string): Promise<number> {

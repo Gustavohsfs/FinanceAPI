@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 
 import { notFound } from '../../common/errors/domain.error.js';
-import { lockActiveCreditCardForUpdate } from '../../database/financial-row-locks.js';
+import {
+  lockActiveCreditCardForUpdate,
+  lockUserForUpdate,
+} from '../../database/financial-row-locks.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { Prisma, type Recurrence, type Transaction } from '../../generated/prisma/client.js';
 import { addMonthsIso, calculateSettlementDate } from '../../shared/date/credit-card-settlement.js';
@@ -49,6 +52,14 @@ export class RecurrencesRepository {
   create(userId: string, input: CreateRecurrenceDto) {
     return this.prisma.$transaction(
       async (database) => {
+        const userExists = await lockUserForUpdate(database, userId);
+        if (!userExists) throw notFound('Conta');
+        const account = await database.account.findFirst({
+          where: { id: input.accountId, userId, deletedAt: null },
+          select: { id: true },
+        });
+        if (!account) throw notFound('Conta');
+
         if (input.creditCardId) {
           const card = await lockActiveCreditCardForUpdate(database, userId, input.creditCardId);
           if (!card) throw notFound('Cartão');
@@ -128,6 +139,14 @@ export class RecurrencesRepository {
   private async materializeRecurrence(recurrence: Recurrence, horizon: Date): Promise<void> {
     await this.prisma.$transaction(
       async (database) => {
+        const userExists = await lockUserForUpdate(database, recurrence.userId);
+        if (!userExists) throw notFound('Conta');
+        const account = await database.account.findFirst({
+          where: { id: recurrence.accountId, userId: recurrence.userId, deletedAt: null },
+          select: { id: true },
+        });
+        if (!account) throw notFound('Conta');
+
         const lockedCard = recurrence.creditCardId
           ? await lockActiveCreditCardForUpdate(
               database,

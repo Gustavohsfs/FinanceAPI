@@ -100,7 +100,14 @@ export class TransactionsService {
     input: UpdateTransactionDto,
   ): Promise<TransactionResponse[]> {
     await this.ensureRelations(userId, input.accountId, input.categoryId, input.creditCardId);
-    return this.repository.updateScoped(userId, id, scope, input);
+    return this.repository.updateScoped(
+      userId,
+      id,
+      scope,
+      input,
+      (occurredAt, closingDay, dueDay) =>
+        new Date(calculateSettlementDate(occurredAt.toISOString(), closingDay, dueDay)),
+    );
   }
 
   delete(userId: string, id: string, scope: 'one' | 'future' | 'all'): Promise<void> {
