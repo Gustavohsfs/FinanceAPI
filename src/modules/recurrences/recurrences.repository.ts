@@ -89,6 +89,9 @@ export class RecurrencesRepository {
   async confirm(userId: string, recurrenceId: string): Promise<TransactionResponse> {
     return this.prisma.$transaction(
       async (database) => {
+        const userExists = await lockUserForUpdate(database, userId);
+        if (!userExists) throw notFound('Recorrência');
+
         const recurrence = await database.recurrence.findFirst({
           where: { id: recurrenceId, userId, deletedAt: null },
         });

@@ -363,6 +363,9 @@ export class TransactionsRepository {
     scope: 'one' | 'future' | 'all',
   ): Promise<void> {
     await this.prisma.$transaction(async (database) => {
+      const userExists = await lockUserForUpdate(database, userId);
+      if (!userExists) throw notFound('Transação');
+
       const base = await database.transaction.findFirst({
         where: { id, userId, deletedAt: null },
       });
