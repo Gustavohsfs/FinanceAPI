@@ -169,6 +169,29 @@
         "tags": ["Accounts"]
       }
     },
+    "/v1/accounts/{id}": {
+      "patch": {
+        "operationId": "AccountsController_update",
+        "parameters": [],
+        "responses": {
+          "default": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AccountResponseDto_Output" }
+              }
+            }
+          }
+        },
+        "tags": ["Accounts"]
+      },
+      "delete": {
+        "operationId": "AccountsController_delete",
+        "parameters": [],
+        "responses": { "204": { "description": "" } },
+        "tags": ["Accounts"]
+      }
+    },
     "/v1/credit-cards": {
       "get": {
         "operationId": "CreditCardsController_list",
@@ -201,6 +224,29 @@
             }
           }
         },
+        "tags": ["CreditCards"]
+      }
+    },
+    "/v1/credit-cards/{id}": {
+      "patch": {
+        "operationId": "CreditCardsController_update",
+        "parameters": [],
+        "responses": {
+          "default": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CreditCardResponseDto_Output" }
+              }
+            }
+          }
+        },
+        "tags": ["CreditCards"]
+      },
+      "delete": {
+        "operationId": "CreditCardsController_delete",
+        "parameters": [],
+        "responses": { "204": { "description": "" } },
         "tags": ["CreditCards"]
       }
     },
@@ -293,7 +339,14 @@
     "/v1/transactions": {
       "get": {
         "operationId": "TransactionsController_list",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "creditCardId",
+            "required": false,
+            "in": "query",
+            "schema": { "format": "uuid", "type": "string" }
+          }
+        ],
         "responses": {
           "default": {
             "description": "",

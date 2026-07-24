@@ -2,11 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { DomainError, notFound } from '../../common/errors/domain.error.js';
 import type { Account } from '../../generated/prisma/client.js';
-import type {
-  AccountResponse,
-  CreateAccountDto,
-  UpdateAccountDto,
-} from './accounts.schemas.js';
+import type { AccountResponse, CreateAccountDto, UpdateAccountDto } from './accounts.schemas.js';
 import { AccountsRepository } from './accounts.repository.js';
 
 function toResponse(account: Account): AccountResponse {
@@ -23,7 +19,9 @@ function toResponse(account: Account): AccountResponse {
 }
 
 function isRecordNotFound(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'P2025';
+  return (
+    typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'P2025'
+  );
 }
 
 @Injectable()

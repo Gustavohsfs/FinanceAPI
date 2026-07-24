@@ -31,7 +31,9 @@ describe('AccountsService', () => {
     repo.findById.mockResolvedValue(null);
     const service = new AccountsService(repo as never);
 
-    await expect(service.update(account.userId, account.id, { name: 'Nova' })).rejects.toMatchObject({
+    await expect(
+      service.update(account.userId, account.id, { name: 'Nova' }),
+    ).rejects.toMatchObject({
       code: 'RESOURCE_NOT_FOUND',
       status: 404,
     });
@@ -43,7 +45,9 @@ describe('AccountsService', () => {
     repo.update.mockRejectedValue({ code: 'P2025' });
     const service = new AccountsService(repo as never);
 
-    await expect(service.update(account.userId, account.id, { name: 'Nova' })).rejects.toMatchObject({
+    await expect(
+      service.update(account.userId, account.id, { name: 'Nova' }),
+    ).rejects.toMatchObject({
       code: 'RESOURCE_NOT_FOUND',
       status: 404,
     });
@@ -58,6 +62,9 @@ describe('AccountsService', () => {
     repo.softDeleteGuarded.mockResolvedValue({ status });
     const service = new AccountsService(repo as never);
 
-    await expect(service.delete(account.userId, account.id)).rejects.toMatchObject({ code, status: 409 });
+    await expect(service.delete(account.userId, account.id)).rejects.toMatchObject({
+      code,
+      status: 409,
+    });
   });
 });

@@ -32,7 +32,9 @@ function repository(updatedCount = 1) {
     recurrence: { count: vi.fn().mockResolvedValue(0) },
   };
   const prisma = {
-    $transaction: vi.fn((callback: (transaction: typeof database) => unknown) => callback(database)),
+    $transaction: vi.fn((callback: (transaction: typeof database) => unknown) =>
+      callback(database),
+    ),
   };
 
   return { database, repository: new AccountsRepository(prisma as never) };

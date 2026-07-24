@@ -11,6 +11,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { ApiQuery } from '@nestjs/swagger';
 import { ZodResponse } from 'nestjs-zod';
 
 import {
@@ -35,6 +36,7 @@ export class TransactionsController {
 
   @Get()
   @ZodResponse({ type: TransactionsPageDto })
+  @ApiQuery({ name: 'creditCardId', type: 'string', format: 'uuid', required: false })
   list(
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: TransactionsQueryDto,

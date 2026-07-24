@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  createAccountSchema,
-  updateAccountSchema,
-} from './accounts/accounts.schemas.js';
+import { createAccountSchema, updateAccountSchema } from './accounts/accounts.schemas.js';
 import { createCategorySchema } from './categories/categories.schemas.js';
 import {
   createCreditCardSchema,
