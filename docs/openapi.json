@@ -293,7 +293,19 @@
     "/v1/credit-cards/{id}/invoices": {
       "get": {
         "operationId": "CreditCardsController_invoice",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "month",
+            "required": true,
+            "in": "query",
+            "description": "Mês da fatura no formato YYYY-MM.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+              "example": "2026-07"
+            }
+          }
+        ],
         "responses": {
           "default": {
             "description": "",
@@ -385,6 +397,20 @@
             "required": false,
             "in": "query",
             "schema": { "format": "uuid", "type": "string" }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Limite superior exclusivo do intervalo [from, to).",
+            "schema": { "format": "date-time", "type": "string" }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Limite inferior inclusivo do intervalo [from, to).",
+            "schema": { "format": "date-time", "type": "string" }
           }
         ],
         "responses": {
@@ -479,7 +505,22 @@
     "/v1/insights/by-category": {
       "get": {
         "operationId": "InsightsController_byCategory",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "description": "Limite superior exclusivo do intervalo [from, to).",
+            "schema": { "format": "date-time", "type": "string" }
+          },
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "description": "Limite inferior inclusivo do intervalo [from, to).",
+            "schema": { "format": "date-time", "type": "string" }
+          }
+        ],
         "responses": {
           "default": {
             "description": "",
@@ -499,7 +540,22 @@
     "/v1/insights/balance-series": {
       "get": {
         "operationId": "InsightsController_balanceSeries",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "description": "Limite superior exclusivo do intervalo [from, to).",
+            "schema": { "format": "date-time", "type": "string" }
+          },
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "description": "Limite inferior inclusivo do intervalo [from, to).",
+            "schema": { "format": "date-time", "type": "string" }
+          }
+        ],
         "responses": {
           "default": {
             "description": "",

@@ -184,7 +184,7 @@ export class TransactionsRepository {
     const cursor = query.cursor ? decodeCursor(query.cursor) : undefined;
     const dateFilter = {
       ...(query.from ? { gte: new Date(query.from) } : {}),
-      ...(query.to ? { lte: new Date(query.to) } : {}),
+      ...(query.to ? { lt: new Date(query.to) } : {}),
     };
     const dateWhere: Prisma.TransactionWhereInput =
       query.basis === 'cash'

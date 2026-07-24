@@ -10,7 +10,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { ApiBody, ApiParam } from '@nestjs/swagger';
+import { ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { ZodResponse } from 'nestjs-zod';
 
 import {
@@ -71,6 +71,16 @@ export class CreditCardsController {
 
   @Get(':id/invoices')
   @ZodResponse({ type: InvoiceResponseDto })
+  @ApiQuery({
+    name: 'month',
+    required: true,
+    description: 'Mês da fatura no formato YYYY-MM.',
+    schema: {
+      type: 'string',
+      pattern: '^\\d{4}-(0[1-9]|1[0-2])$',
+      example: '2026-07',
+    },
+  })
   invoice(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,

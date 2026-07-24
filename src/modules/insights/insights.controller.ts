@@ -1,4 +1,5 @@
 import { Controller, Get, Query } from '@nestjs/common';
+import { ApiQuery } from '@nestjs/swagger';
 import { ZodResponse } from 'nestjs-zod';
 
 import {
@@ -39,6 +40,20 @@ export class InsightsController {
 
   @Get('by-category')
   @ZodResponse({ type: [CategoryInsightDto] })
+  @ApiQuery({
+    name: 'from',
+    type: 'string',
+    format: 'date-time',
+    required: true,
+    description: 'Limite inferior inclusivo do intervalo [from, to).',
+  })
+  @ApiQuery({
+    name: 'to',
+    type: 'string',
+    format: 'date-time',
+    required: true,
+    description: 'Limite superior exclusivo do intervalo [from, to).',
+  })
   byCategory(
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: RangeQueryDto,
@@ -48,6 +63,20 @@ export class InsightsController {
 
   @Get('balance-series')
   @ZodResponse({ type: [BalancePointDto] })
+  @ApiQuery({
+    name: 'from',
+    type: 'string',
+    format: 'date-time',
+    required: true,
+    description: 'Limite inferior inclusivo do intervalo [from, to).',
+  })
+  @ApiQuery({
+    name: 'to',
+    type: 'string',
+    format: 'date-time',
+    required: true,
+    description: 'Limite superior exclusivo do intervalo [from, to).',
+  })
   balanceSeries(
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: SeriesQueryDto,

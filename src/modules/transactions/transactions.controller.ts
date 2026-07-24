@@ -36,6 +36,20 @@ export class TransactionsController {
 
   @Get()
   @ZodResponse({ type: TransactionsPageDto })
+  @ApiQuery({
+    name: 'from',
+    type: 'string',
+    format: 'date-time',
+    required: false,
+    description: 'Limite inferior inclusivo do intervalo [from, to).',
+  })
+  @ApiQuery({
+    name: 'to',
+    type: 'string',
+    format: 'date-time',
+    required: false,
+    description: 'Limite superior exclusivo do intervalo [from, to).',
+  })
   @ApiQuery({ name: 'creditCardId', type: 'string', format: 'uuid', required: false })
   list(
     @CurrentUser() user: AuthenticatedUser,

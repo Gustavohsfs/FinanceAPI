@@ -114,7 +114,7 @@ export class InsightsRepository {
         AND t.deleted_at IS NULL
         AND t.type = ${type}::"TransactionType"
         AND t.occurred_at >= ${from}
-        AND t.occurred_at <= ${to}
+        AND t.occurred_at < ${to}
       GROUP BY t.category_id, c.name
       ORDER BY SUM(t.amount_cents) DESC, t.category_id
     `);
@@ -144,7 +144,7 @@ export class InsightsRepository {
         WHERE t.user_id = ${userId}::uuid
           AND t.deleted_at IS NULL
           AND ${date} >= ${from}
-          AND ${date} <= ${to}
+          AND ${date} < ${to}
         GROUP BY 1
       )
       SELECT
