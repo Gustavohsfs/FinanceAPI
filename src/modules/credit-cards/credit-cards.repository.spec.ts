@@ -71,6 +71,7 @@ describe('CreditCardsRepository', () => {
         creditCardId: card.id,
         paymentMethod: 'CREDIT',
         deletedAt: null,
+        settledAt: before,
       },
       data: { settledAt: after },
     });

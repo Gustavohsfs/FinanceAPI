@@ -106,6 +106,7 @@ export class CreditCardsRepository {
                 creditCardId: id,
                 paymentMethod: 'CREDIT',
                 deletedAt: null,
+                settledAt: change.before,
               },
               data: { settledAt: change.after },
             });
