@@ -47,25 +47,13 @@ export class CreditCardsService {
     id: string,
     input: UpdateCreditCardDto,
   ): Promise<CreditCardResponse> {
-    const card = await this.repository.findById(userId, id);
-    if (!card) throw notFound('Cartão');
-    if (input.accountId !== undefined && !(await this.accounts.exists(userId, input.accountId))) {
-      throw notFound('Conta');
-    }
-
-    const closingDay = input.closingDay ?? card.closingDay;
-    const dueDay = input.dueDay ?? card.dueDay;
-    const calendarChanged = closingDay !== card.closingDay || dueDay !== card.dueDay;
-    const sources = calendarChanged ? await this.repository.listSettlementSources(userId, id) : [];
-    const changes = sources.flatMap((source) => {
-      const after = new Date(
-        calculateSettlementDate(source.occurredAt.toISOString(), closingDay, dueDay),
-      );
-      return source.settledAt?.getTime() === after.getTime()
-        ? []
-        : [{ id: source.id, before: source.settledAt, after }];
-    });
-    const updated = await this.repository.updateWithSettlements(userId, id, input, changes);
+    const updated = await this.repository.updateWithSettlements(
+      userId,
+      id,
+      input,
+      (occurredAt, closingDay, dueDay) =>
+        new Date(calculateSettlementDate(occurredAt.toISOString(), closingDay, dueDay)),
+    );
     if (!updated) throw notFound('Cartão');
     return toResponse(updated);
   }

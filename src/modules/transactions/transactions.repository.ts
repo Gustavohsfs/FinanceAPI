@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { decodeCursor, encodeCursor } from '../../common/crypto/cursor.js';
 import { DomainError, notFound } from '../../common/errors/domain.error.js';
+import { lockActiveCreditCardForUpdate } from '../../database/financial-row-locks.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { Prisma, type Transaction } from '../../generated/prisma/client.js';
 import type { NewTransactionRow } from './domain/build-transactions.js';
@@ -13,6 +14,12 @@ import {
   type TransactionsQueryDto,
   type UpdateTransactionDto,
 } from './transactions.schemas.js';
+
+export type TransactionSettlementCalculator = (
+  occurredAt: Date,
+  closingDay: number,
+  dueDay: number,
+) => Date;
 
 function toResponse(transaction: Transaction): TransactionResponse {
   return {
@@ -77,6 +84,7 @@ export class TransactionsRepository {
     key: string,
     requestHash: string,
     rows: readonly NewTransactionRow[],
+    calculateSettlement: TransactionSettlementCalculator,
   ): Promise<TransactionResponse[]> {
     return this.prisma.$transaction(
       async (database) => {
@@ -95,9 +103,32 @@ export class TransactionsRepository {
           return z.array(transactionResponseSchema).parse(previous.responseBody);
         }
 
-        await database.transaction.createMany({ data: [...rows] });
+        const creditCardIds = [
+          ...new Set(
+            rows.flatMap((row) =>
+              row.paymentMethod === 'CREDIT' && row.creditCardId ? [row.creditCardId] : [],
+            ),
+          ),
+        ].sort();
+        const lockedCards = new Map<string, { id: string; closingDay: number; dueDay: number }>();
+        for (const creditCardId of creditCardIds) {
+          const card = await lockActiveCreditCardForUpdate(database, userId, creditCardId);
+          if (!card) throw notFound('CartÃ£o');
+          lockedCards.set(card.id, card);
+        }
+        const settledRows = rows.map((row): NewTransactionRow => {
+          if (row.paymentMethod !== 'CREDIT' || !row.creditCardId) return row;
+          const card = lockedCards.get(row.creditCardId);
+          if (!card) throw notFound('CartÃ£o');
+          return {
+            ...row,
+            settledAt: calculateSettlement(row.occurredAt, card.closingDay, card.dueDay),
+          };
+        });
+
+        await database.transaction.createMany({ data: settledRows });
         const created = await database.transaction.findMany({
-          where: { userId, id: { in: rows.map((row) => row.id) } },
+          where: { userId, id: { in: settledRows.map((row) => row.id) } },
           orderBy: [{ installmentNumber: 'asc' }, { id: 'asc' }],
         });
         const response = created.map(toResponse);

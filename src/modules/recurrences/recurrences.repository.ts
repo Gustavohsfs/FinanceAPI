@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { notFound } from '../../common/errors/domain.error.js';
+import { lockActiveCreditCardForUpdate } from '../../database/financial-row-locks.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { Prisma, type Recurrence, type Transaction } from '../../generated/prisma/client.js';
 import { addMonthsIso, calculateSettlementDate } from '../../shared/date/credit-card-settlement.js';
@@ -46,23 +47,32 @@ export class RecurrencesRepository {
   }
 
   create(userId: string, input: CreateRecurrenceDto) {
-    return this.prisma.recurrence.create({
-      data: {
-        userId,
-        type: input.type,
-        amountCents: input.amountCents,
-        description: input.description,
-        ...(input.categoryId ? { categoryId: input.categoryId } : {}),
-        accountId: input.accountId,
-        ...(input.creditCardId ? { creditCardId: input.creditCardId } : {}),
-        paymentMethod: input.paymentMethod,
-        frequency: input.frequency,
-        dayOfMonth: input.dayOfMonth,
-        nextOccurrenceAt: new Date(input.nextOccurrenceAt),
-        currency: input.currency,
-        ...(input.notes ? { notes: input.notes } : {}),
+    return this.prisma.$transaction(
+      async (database) => {
+        if (input.creditCardId) {
+          const card = await lockActiveCreditCardForUpdate(database, userId, input.creditCardId);
+          if (!card) throw notFound('Cartão');
+        }
+        return database.recurrence.create({
+          data: {
+            userId,
+            type: input.type,
+            amountCents: input.amountCents,
+            description: input.description,
+            ...(input.categoryId ? { categoryId: input.categoryId } : {}),
+            accountId: input.accountId,
+            ...(input.creditCardId ? { creditCardId: input.creditCardId } : {}),
+            paymentMethod: input.paymentMethod,
+            frequency: input.frequency,
+            dayOfMonth: input.dayOfMonth,
+            nextOccurrenceAt: new Date(input.nextOccurrenceAt),
+            currency: input.currency,
+            ...(input.notes ? { notes: input.notes } : {}),
+          },
+        });
       },
-    });
+      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
+    );
   }
 
   async confirm(userId: string, recurrenceId: string): Promise<TransactionResponse> {
@@ -115,60 +125,63 @@ export class RecurrencesRepository {
     }
   }
 
-  private async materializeRecurrence(
-    recurrence: Recurrence & {
-      creditCard: { closingDay: number; dueDay: number } | null;
-    },
-    horizon: Date,
-  ): Promise<void> {
-    await this.prisma.$transaction(async (database) => {
-      let occurrence = recurrence.nextOccurrenceAt.toISOString();
-      while (new Date(occurrence) <= horizon) {
-        const externalId = `${recurrence.id}:${occurrence.slice(0, 10)}`;
-        const settledAt =
-          recurrence.creditCard && recurrence.paymentMethod === 'CREDIT'
-            ? new Date(
-                calculateSettlementDate(
-                  occurrence,
-                  recurrence.creditCard.closingDay,
-                  recurrence.creditCard.dueDay,
-                ),
-              )
-            : null;
-        await database.transaction.upsert({
-          where: {
-            userId_source_externalId: {
-              userId: recurrence.userId,
-              source: 'RECURRENCE',
-              externalId,
+  private async materializeRecurrence(recurrence: Recurrence, horizon: Date): Promise<void> {
+    await this.prisma.$transaction(
+      async (database) => {
+        const lockedCard = recurrence.creditCardId
+          ? await lockActiveCreditCardForUpdate(
+              database,
+              recurrence.userId,
+              recurrence.creditCardId,
+            )
+          : null;
+        if (recurrence.creditCardId && !lockedCard) throw notFound('Cartão');
+
+        let occurrence = recurrence.nextOccurrenceAt.toISOString();
+        while (new Date(occurrence) <= horizon) {
+          const externalId = `${recurrence.id}:${occurrence.slice(0, 10)}`;
+          const settledAt =
+            lockedCard && recurrence.paymentMethod === 'CREDIT'
+              ? new Date(
+                  calculateSettlementDate(occurrence, lockedCard.closingDay, lockedCard.dueDay),
+                )
+              : null;
+          await database.transaction.upsert({
+            where: {
+              userId_source_externalId: {
+                userId: recurrence.userId,
+                source: 'RECURRENCE',
+                externalId,
+              },
             },
-          },
-          create: {
-            userId: recurrence.userId,
-            type: recurrence.type,
-            amountCents: recurrence.amountCents,
-            description: recurrence.description,
-            occurredAt: new Date(occurrence),
-            settledAt,
-            categoryId: recurrence.categoryId,
-            accountId: recurrence.accountId,
-            creditCardId: recurrence.creditCardId,
-            paymentMethod: recurrence.paymentMethod,
-            isProjected: true,
-            recurrenceId: recurrence.id,
-            currency: recurrence.currency,
-            notes: recurrence.notes,
-            externalId,
-            source: 'RECURRENCE',
-          },
-          update: {},
+            create: {
+              userId: recurrence.userId,
+              type: recurrence.type,
+              amountCents: recurrence.amountCents,
+              description: recurrence.description,
+              occurredAt: new Date(occurrence),
+              settledAt,
+              categoryId: recurrence.categoryId,
+              accountId: recurrence.accountId,
+              creditCardId: recurrence.creditCardId,
+              paymentMethod: recurrence.paymentMethod,
+              isProjected: true,
+              recurrenceId: recurrence.id,
+              currency: recurrence.currency,
+              notes: recurrence.notes,
+              externalId,
+              source: 'RECURRENCE',
+            },
+            update: {},
+          });
+          occurrence = addMonthsIso(occurrence, 1);
+        }
+        await database.recurrence.update({
+          where: { id: recurrence.id, userId: recurrence.userId },
+          data: { nextOccurrenceAt: new Date(occurrence) },
         });
-        occurrence = addMonthsIso(occurrence, 1);
-      }
-      await database.recurrence.update({
-        where: { id: recurrence.id, userId: recurrence.userId },
-        data: { nextOccurrenceAt: new Date(occurrence) },
-      });
-    });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
+    );
   }
 }

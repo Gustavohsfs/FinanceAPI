@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
 
+import { notFound } from '../../common/errors/domain.error.js';
+import {
+  lockActiveCreditCardForUpdate,
+  lockUserForUpdate,
+} from '../../database/financial-row-locks.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { Prisma, type CreditCard } from '../../generated/prisma/client.js';
 import type { CreateCreditCardDto, UpdateCreditCardDto } from './credit-cards.schemas.js';
@@ -15,6 +20,12 @@ export interface SettlementChange {
   before: Date | null;
   after: Date;
 }
+
+export type SettlementDateCalculator = (
+  occurredAt: Date,
+  closingDay: number,
+  dueDay: number,
+) => Date;
 
 export type CreditCardDeleteFacts =
   | { status: 'deleted' }
@@ -83,15 +94,60 @@ export class CreditCardsRepository {
     userId: string,
     id: string,
     input: UpdateCreditCardDto,
-    changes: readonly SettlementChange[],
+    settlementInput: SettlementDateCalculator | readonly SettlementChange[],
   ): Promise<CreditCard | null> {
     try {
       return await this.prisma.$transaction(
         async (database) => {
+          if (input.accountId !== undefined) {
+            const userExists = await lockUserForUpdate(database, userId);
+            if (!userExists) throw notFound('Conta');
+          }
+
+          const lockedCard = await lockActiveCreditCardForUpdate(database, userId, id);
+          if (!lockedCard) return null;
+
           const before = await database.creditCard.findFirst({
             where: { id, userId, deletedAt: null },
           });
           if (!before) return null;
+
+          if (input.accountId !== undefined) {
+            const account = await database.account.findFirst({
+              where: { id: input.accountId, userId, deletedAt: null },
+              select: { id: true },
+            });
+            if (!account) throw notFound('Conta');
+          }
+
+          const closingDay = input.closingDay ?? before.closingDay;
+          const dueDay = input.dueDay ?? before.dueDay;
+          const calendarChanged = closingDay !== before.closingDay || dueDay !== before.dueDay;
+          const calculateSettlement =
+            typeof settlementInput === 'function' ? settlementInput : undefined;
+          const suppliedChanges =
+            typeof settlementInput === 'function' ? undefined : settlementInput;
+          const sources: SettlementSource[] =
+            calendarChanged && calculateSettlement
+              ? await database.transaction.findMany({
+                  where: {
+                    userId,
+                    creditCardId: id,
+                    paymentMethod: 'CREDIT',
+                    deletedAt: null,
+                  },
+                  select: { id: true, occurredAt: true, settledAt: true },
+                  orderBy: [{ occurredAt: 'asc' }, { id: 'asc' }],
+                })
+              : [];
+          const changes: readonly SettlementChange[] = calculateSettlement
+            ? sources.flatMap((source) => {
+                const after = calculateSettlement(source.occurredAt, closingDay, dueDay);
+                return source.settledAt?.getTime() === after.getTime()
+                  ? []
+                  : [{ id: source.id, before: source.settledAt, after }];
+              })
+            : (suppliedChanges ?? []);
 
           const after = await database.creditCard.update({
             where: { id, userId, deletedAt: null },
@@ -151,6 +207,9 @@ export class CreditCardsRepository {
     try {
       return await this.prisma.$transaction(
         async (database) => {
+          const lockedCard = await lockActiveCreditCardForUpdate(database, userId, id);
+          if (!lockedCard) return { status: 'not-found' };
+
           const card = await database.creditCard.findFirst({
             where: { id, userId, deletedAt: null },
           });

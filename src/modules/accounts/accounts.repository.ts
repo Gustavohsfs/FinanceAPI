@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
+import { lockUserForUpdate } from '../../database/financial-row-locks.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import type { CreateAccountDto, UpdateAccountDto } from './accounts.schemas.js';
@@ -61,12 +62,7 @@ export class AccountsRepository {
   async softDeleteGuarded(userId: string, id: string): Promise<AccountDeleteFacts> {
     return this.prisma.$transaction(
       async (database) => {
-        await database.$queryRaw(Prisma.sql`
-          SELECT id
-          FROM users
-          WHERE id = ${userId}::uuid
-          FOR UPDATE
-        `);
+        await lockUserForUpdate(database, userId);
 
         const target = await database.account.findFirst({
           where: { id, userId, deletedAt: null },

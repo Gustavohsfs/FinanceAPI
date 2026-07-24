@@ -43,22 +43,20 @@ export class TransactionsService {
       );
     }
     await this.ensureRelations(userId, input.accountId, input.categoryId, input.creditCardId);
-    const card = input.creditCardId
-      ? await this.creditCards.findById(userId, input.creditCardId)
-      : null;
     const now = new Date();
     const rows = buildTransactions(input, {
       userId,
       now,
       newId: randomUUID,
-      settledAtFor: (occurredAt) =>
-        card ? calculateSettlementDate(occurredAt, card.closingDay, card.dueDay) : null,
+      settledAtFor: () => null,
     });
     return this.repository.createIdempotent(
       userId,
       keyResult.data,
       canonicalRequestHash(input),
       rows,
+      (occurredAt, closingDay, dueDay) =>
+        new Date(calculateSettlementDate(occurredAt.toISOString(), closingDay, dueDay)),
     );
   }
 
