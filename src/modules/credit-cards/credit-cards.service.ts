@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
 
-import { notFound } from '../../common/errors/domain.error.js';
+import { DomainError, notFound } from '../../common/errors/domain.error.js';
 import type { CreditCard } from '../../generated/prisma/client.js';
+import { calculateSettlementDate } from '../../shared/date/credit-card-settlement.js';
 import { AccountsRepository } from '../accounts/accounts.repository.js';
 import type {
   CreateCreditCardDto,
   CreditCardResponse,
   InvoiceResponse,
+  UpdateCreditCardDto,
 } from './credit-cards.schemas.js';
 import { CreditCardsRepository } from './credit-cards.repository.js';
 
@@ -38,6 +40,51 @@ export class CreditCardsService {
   async create(userId: string, input: CreateCreditCardDto): Promise<CreditCardResponse> {
     if (!(await this.accounts.exists(userId, input.accountId))) throw notFound('Conta');
     return toResponse(await this.repository.create(userId, input));
+  }
+
+  async update(
+    userId: string,
+    id: string,
+    input: UpdateCreditCardDto,
+  ): Promise<CreditCardResponse> {
+    const card = await this.repository.findById(userId, id);
+    if (!card) throw notFound('Cartão');
+    if (input.accountId !== undefined && !(await this.accounts.exists(userId, input.accountId))) {
+      throw notFound('Conta');
+    }
+
+    const closingDay = input.closingDay ?? card.closingDay;
+    const dueDay = input.dueDay ?? card.dueDay;
+    const calendarChanged = closingDay !== card.closingDay || dueDay !== card.dueDay;
+    const sources = calendarChanged ? await this.repository.listSettlementSources(userId, id) : [];
+    const changes = sources.flatMap((source) => {
+      const after = new Date(
+        calculateSettlementDate(source.occurredAt.toISOString(), closingDay, dueDay),
+      );
+      return source.settledAt?.getTime() === after.getTime()
+        ? []
+        : [{ id: source.id, before: source.settledAt, after }];
+    });
+    const updated = await this.repository.updateWithSettlements(userId, id, input, changes);
+    if (!updated) throw notFound('Cartão');
+    return toResponse(updated);
+  }
+
+  async delete(userId: string, id: string): Promise<void> {
+    const facts = await this.repository.softDeleteGuarded(userId, id);
+    switch (facts.status) {
+      case 'deleted':
+        return;
+      case 'not-found':
+        throw notFound('Cartão');
+      case 'has-active-recurrences':
+        throw new DomainError(
+          'CREDIT_CARD_HAS_ACTIVE_RECURRENCES',
+          409,
+          'Cartão com recorrências ativas',
+          'Exclua ou desative as recorrências vinculadas antes de excluir este cartão.',
+        );
+    }
   }
 
   async invoice(userId: string, id: string, month: string): Promise<InvoiceResponse> {

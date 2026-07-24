@@ -1,4 +1,15 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ZodResponse } from 'nestjs-zod';
 
 import {
@@ -12,6 +23,7 @@ import {
   type InvoiceResponse,
   InvoiceResponseDto,
   InvoiceQueryDto,
+  UpdateCreditCardDto,
 } from './credit-cards.schemas.js';
 import { CreditCardsService } from './credit-cards.service.js';
 
@@ -32,6 +44,25 @@ export class CreditCardsController {
     @Body() input: CreateCreditCardDto,
   ): Promise<CreditCardResponse> {
     return this.service.create(user.id, input);
+  }
+
+  @Patch(':id')
+  @ZodResponse({ type: CreditCardResponseDto })
+  update(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() input: UpdateCreditCardDto,
+  ): Promise<CreditCardResponse> {
+    return this.service.update(user.id, id, input);
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  async delete(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<void> {
+    await this.service.delete(user.id, id);
   }
 
   @Get(':id/invoices')
